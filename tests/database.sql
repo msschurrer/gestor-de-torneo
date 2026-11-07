@@ -1,10 +1,10 @@
 -- Multi-tenant integration tests. Synthetic verified users only; everything rolls back.
 begin;
 insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values
-('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee11','test-owner-one@example.invalid',now(),'{}'),
-('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee12','test-owner-two@example.invalid',now(),'{"role":"admin"}'),
-('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee13','test-viewer@example.invalid',now(),'{}'),
-('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee14','test-editor@example.invalid',now(),'{}');
+('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee11','test-owner-one@example.invalid',now(),'{"first_name":"Test","last_name":"Member"}'),
+('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee12','test-owner-two@example.invalid',now(),'{"role":"admin","first_name":"Test","last_name":"Member"}'),
+('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee13','test-viewer@example.invalid',now(),'{"first_name":"Test","last_name":"Member"}'),
+('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee14','test-editor@example.invalid',now(),'{"first_name":"Test","last_name":"Member"}');
 set local role anon;
 do $$begin
  begin perform public.list_tournaments();raise exception 'FAIL anonymous list';exception when insufficient_privilege then null;end;
@@ -24,7 +24,7 @@ set local role authenticated;
 select public.save_tournament($payload${"id": "eeeeeeee-eeee-4eee-aeee-eeeeeeeeee22", "slug": "test-owner-two", "name": "Test owner two", "season": "2026", "category": "Primera \u00b7 F\u00fatbol 7", "description": "Diez equipos, dos zonas y una misma pasi\u00f3n. Un torneo de demostraci\u00f3n para descubrir todas las herramientas de Gestor de Torneos.", "rules": "Datos ficticios de demostraci\u00f3n. Fase de zonas a una rueda. Interzonales de libres que suman puntos. Victoria: 3 puntos; empate: 1. Desempate: puntos, diferencia de gol y goles a favor.", "status": "published", "version": 0, "demo": true, "settings": {"groups": 1, "legs": 1, "interzonal": true, "interzonalPoints": true, "interzonalStats": true, "pitches": ["Cancha test"], "slots": ["19:00", "20:00", "21:00"], "duration": 45, "buffer": 15, "startDate": "2026-11-07", "intervalDays": 7, "mode": "rotation", "seed": 42, "win": 3, "draw": 1, "loss": 0, "tieBreakers": ["points", "difference", "goals"], "yellowLimit": 5, "timezone": "America/Argentina/Cordoba"}, "entrants": [], "matches": [], "visibility": "private"}$payload$::jsonb,0);
 do $$begin
  if exists(select 1 from jsonb_array_elements(public.list_tournaments()) x where x->>'id'='eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21' and x->>'access'<>'viewer') then raise exception 'FAIL forged metadata grants access';end if;
- begin perform public.set_tournament_collaborator('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','test-editor@example.invalid');raise exception 'FAIL non-owner grants access';exception when insufficient_privilege then null;end;
+ begin perform public.set_tournament_member('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee14');raise exception 'FAIL non-owner grants access';exception when insufficient_privilege then null;end;
 end$$;
 reset role;
 select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee13',true);
@@ -40,8 +40,7 @@ end$$;
 reset role;
 select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee11',true);
 set local role authenticated;
-select public.set_tournament_collaborator('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','test-editor@example.invalid');
-select public.set_tournament_collaborator('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','pending-editor@example.invalid');
+select public.set_tournament_member('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee14');
 do $$declare p jsonb;begin
  select value into p from jsonb_array_elements(public.list_tournaments()) where value->>'id'='eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21';
  perform public.save_tournament(jsonb_set(p,'{visibility}','"private"'),1);
@@ -63,27 +62,27 @@ do $$declare p jsonb;begin
  perform public.save_tournament(p,2);
  begin perform public.save_tournament(p,2);raise exception 'FAIL stale edit';exception when serialization_failure then null;end;
  begin perform public.save_tournament(jsonb_set(p,'{visibility}','"public"'),3);raise exception 'FAIL editor changes privacy';exception when insufficient_privilege then null;end;
- begin perform public.set_tournament_collaborator('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','test-viewer@example.invalid');raise exception 'FAIL editor delegates';exception when insufficient_privilege then null;end;
+ begin perform public.set_tournament_member('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee13');raise exception 'FAIL editor delegates';exception when insufficient_privilege then null;end;
  begin perform public.get_tournament_collaborators('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21');raise exception 'FAIL editor sees invitation emails';exception when insufficient_privilege then null;end;
 end$$;
 reset role;
--- A pending grant binds only after the exact email has been verified.
-insert into auth.users(id,email,email_confirmed_at) values('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee15','pending-editor@example.invalid',null);
+-- A new, unverified email account has ordinary viewing access, no inherited invitation.
+insert into auth.users(id,email,raw_user_meta_data) values('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee15','pending-editor@example.invalid','{"first_name":"New","last_name":"Person","role":"admin"}');
 select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee15',true);
 set local role authenticated;
-do $$begin if public.can_edit_tournament('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL unverified invite accepted';end if;end$$;
-reset role;
-update auth.users set email_confirmed_at=now() where id='eeeeeeee-eeee-4eee-aeee-eeeeeeeeee15';
-set local role authenticated;
-do $$begin if not public.can_edit_tournament('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL verified invite not bound';end if;end$$;
+do $$begin
+ if not private.active_member() then raise exception 'FAIL immediate member unavailable';end if;
+ if public.can_edit_tournament('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL new account inherits editing';end if;
+ if not exists(select 1 from public.profiles where user_id=auth.uid() and first_name='New' and last_name='Person') then raise exception 'FAIL name not stored';end if;
+end$$;
 reset role;
 select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee11',true);
 set local role authenticated;
-select public.set_tournament_collaborator('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','test-editor@example.invalid',true);
+select public.set_tournament_member('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee14',true);
 reset role;
 select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee14',true);
 set local role authenticated;
 do $$begin if public.can_edit_tournament('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL revocation ineffective';end if;end$$;
 reset role;
 rollback;
-select 'PASS: registration, owner assignment, viewer boundaries, private isolation, forged roles rejected, collaborators, owner-only delegation/privacy, pending verified grants, revocation and concurrency' as result;
+select 'PASS: registration, owner assignment, viewer boundaries, private isolation, forged roles rejected, collaborators, owner-only delegation/privacy, immediate unverified registration, profile names, no email-based grants, revocation and concurrency' as result;

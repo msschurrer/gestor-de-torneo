@@ -4,11 +4,11 @@ Web app independiente de FOCOemergency. Next.js App Router, React, TypeScript, T
 
 ## Uso
 
-1. Abrir la web, elegir Crear cuenta, ingresar correo y contraseña y confirmar el correo recibido. Una cuenta confirmada puede ver todos los torneos públicos.
+1. Abrir la web, elegir Crear cuenta, ingresar nombre, apellido, correo y contraseña y entrar directamente, sin verificar el correo. Una cuenta registrada puede ver todos los torneos públicos.
 2. En Mis torneos → Crear torneo, configurar competencia, equipos, planteles, zonas, canchas y turnos.
 3. Generar fixture, revisar equidad y publicar. Liga de una o varias zonas, ida/vuelta e interzonales de libres.
 4. Elegir visibilidad: público para miembros registrados o privado para propietario y colaboradores. Los borradores se mantienen privados.
-5. En Accesos, solo el propietario habilita o quita colaboradores por correo. Los colaboradores pueden editar y cargar resultados, pero no cambiar la privacidad ni delegar permisos. No se envía un correo de invitación automático.
+5. En Accesos, solo el propietario habilita o quita colaboradores sobre una cuenta ya creada, usando el código que esa persona comparte desde Mi cuenta. Los colaboradores pueden editar y cargar resultados, pero no cambiar la privacidad ni delegar permisos. No se envía un correo de invitación automático.
 6. Cargar resultados, goles y tarjetas; posiciones y rankings se recalculan desde partidos finalizados publicados. Las correcciones quedan auditadas.
 
 [Modelo de acceso vigente](docs/ACCESO_POR_TORNEO.md). Esta actualización reemplaza los requisitos originales de administradores centrales y portal anónimo del [documento maestro](docs/PROYECTO_MAESTRO.md).
@@ -25,13 +25,15 @@ Aplicar `supabase/migrations/*.sql` en orden. El script `supabase/seed.sql` est�
 
 La edición guarda un agregado versionado y su proyección normalizada en una sola transacción. Los snapshots de edición son privados; las lecturas usan `list_tournaments()`. Las proyecciones, auditoría y Storage tienen RLS por torneo. La propiedad deriva del UID autenticado. El rol member no otorga administración global. Las funciones privadas de autorización no usan user_metadata.
 
-`tests/database.sql` prueba el aislamiento usando cuentas sintéticas, sin correos reales y con rollback completo. Incluye espectadores, propietarios, colaboradores, privacidad, registro, invitaciones pendientes, revocación y concurrencia.
+`tests/database.sql` prueba el aislamiento usando cuentas sintéticas, sin correos reales y con rollback completo. Incluye espectadores, propietarios, colaboradores, privacidad, registro inmediato, nombres, permisos por cuenta, revocación y concurrencia.
 
-## Autenticación y entrega de correo
+## Autenticación sin verificación de correo
 
-Supabase Site URL: https://gestor-torneos-kappa.vercel.app; Redirect URL: https://gestor-torneos-kappa.vercel.app/admin. Las sesiones existentes siguen funcionando. Los miembros nuevos se provisionan al verificar su email.
+Por decisión del propietario, Confirm email está desactivado en Supabase Authentication → Sign In / Providers. El registro requiere nombre, apellido, correo y contraseña de al menos 8 caracteres. El correo funciona como usuario único, pero no se prueba que le pertenezca a la persona. El alta entrega sesión de inmediato; el login usa contraseña. La app no envía enlaces, confirmaciones ni recuperación por correo, y este flujo no necesita SMTP.
 
-**Antes de abrir el registro a terceros, configurar SMTP propio en Supabase Authentication → Emails.** El servicio de correo incorporado limita destinatarios y frecuencia. Mantener activa la confirmación de email: evita que alguien reclame un permiso escribiendo un correo ajeno. La configuración SMTP requiere credenciales del proveedor del propietario y normalmente un remitente verificado.
+Las sesiones existentes y los torneos se conservan. Una persona que antes entraba por enlace y no tiene contraseña debe usar su sesión existente y abrir Mis torneos → Mi cuenta → Definir contraseña. No se reemplazan contraseñas ni se transfieren cuentas por conocer una dirección de correo. Si perdió también esa sesión, hace falta asistencia del propietario con comprobación por otro canal.
+
+Para autorizar colaboradores, cada miembro comparte su código UUID desde Mi cuenta. El propietario busca ese código y confirma la cuenta concreta. No hay permisos pendientes activables por email. Las concesiones se vinculan al user_id real, con revocación lógica y auditoría. Los nombres y el correo son declarados por el usuario, no identidad verificada.
 
 ## Despliegue
 

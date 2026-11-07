@@ -1,29 +1,19 @@
-# Modelo vigente de acceso — 7 de noviembre de 2026
+# Modelo vigente: registro inmediato con contraseña
 
-Esta decisión del propietario reemplaza los apartados de acceso público sin cuenta y administración centralizada del documento maestro original.
+Actualización posterior del 7 de noviembre de 2026. Esta decisión reemplaza el requisito previo de verificar correo.
 
-Todos se registran e ingresan para consultar torneos. Se conserva la verificación de correo para identificar al propietario y vincular permisos por email de forma segura. Los usuarios confirmados reciben un perfil de miembro sin privilegios globales.
+Todos ingresan con una cuenta. El registro pide nombre, apellido, correo y contraseña. El correo es el usuario para iniciar sesión, sin confirmación ni mensajes automáticos. Supabase Auth conserva el hash de la contraseña; los datos deportivos nunca contienen contraseñas. Nombre y apellido se almacenan en profiles para presentación, sin usarse como autorización.
 
-Cada miembro puede crear torneos. PostgreSQL asigna su propietario usando `auth.uid()`, nunca datos enviados por el navegador. Los torneos públicos publicados son visibles para todos los miembros. Los privados y los borradores son visibles únicamente para su propietario y colaboradores. Un enlace no da acceso a un torneo privado.
+Cualquier miembro puede crear un torneo y queda como propietario. Los torneos publicados públicos son visibles para todas las cuentas registradas. Los privados y borradores solo son visibles para el propietario y sus colaboradores. La administración no es global. El propietario es el único que puede cambiar privacidad y dar o quitar permisos.
 
-El propietario administra el torneo y su privacidad. Puede habilitar o revocar colaboradores desde la pestaña Accesos de ese torneo. Los colaboradores tienen edición deportiva completa, incluidos fixture, equipos, resultados y eventos. No pueden transferir propiedad, cambiar privacidad, ver el listado de correos de colaboradores ni otorgar o revocar permisos. Los permisos no se heredan entre torneos.
+Como el correo no se verifica, ya no se habilita una dirección pendiente: el propietario recibe el código de usuario de una cuenta ya registrada, la busca y confirma el nombre, correo declarado y código antes de autorizarla. La concesión corresponde a ese user_id; otra persona que escriba un correo no recibe accesos automáticamente. Las concesiones antiguas activas conservan su UID. Los registros pendientes antiguos se conservan sin activación automática y el endpoint anterior por email queda revocado.
 
-El propietario carga el correo exacto de la persona. Si ya existe una cuenta confirmada, el permiso se activa inmediatamente. De otro modo queda pendiente hasta que ese correo se confirme. No se envían invitaciones automáticas ni se presume que una dirección escrita por un tercero está verificada. El organizador comunica el acceso por su canal habitual.
+Los colaboradores tienen edición deportiva completa en su torneo, sin delegación ni cambios de privacidad. La revocación es lógica, inmediata en las siguientes operaciones, y auditada. Las políticas RLS, los snapshots privados y los controles transaccionales/versionados se mantienen. Los espectadores siguen sin poder editar ni consultar torneos privados.
 
-La pestaña Mis torneos muestra los torneos propios y las colaboraciones. Torneos muestra todos los campeonatos publicados que la cuenta puede consultar. Los cambios deportivos y los permisos quedan auditados. Las revocaciones se comprueban en la base en cada operación; un editor con una pestaña vieja no puede continuar guardando después de perder acceso.
+Mi cuenta permite completar los nombres existentes, copiar el código de usuario y definir contraseña desde una sesión autenticada. Para quienes antes usaban magic link, esa sesión permite pasar al acceso con contraseña sin enviar correo. No hay recuperación automática de contraseña por un correo no verificado. La asistencia para cuentas sin sesión ni contraseña debe comprobar la identidad por otro canal; no se usa la dirección declarada como prueba.
 
-## Seguridad
+## Configuración y pruebas
 
-El documento de edición no se puede seleccionar directamente desde la API. Un RPC invoker llama a un lector privado que devuelve solamente las filas permitidas y los partidos publicados para espectadores. Los ayudantes de autorización con privilegios elevados están en un esquema privado, usan search_path vacío y verifican la cuenta real y su perfil habilitado. No existe acceso deportivo anónimo. Las proyecciones relacionales y Storage se protegen por el mismo torneo.
+Supabase Authentication → Sign In / Providers: Email habilitado, Allow new users to sign up habilitado, Confirm email desactivado. No habilitar anonymous sign-ins. La URL principal y /admin permanecen configuradas. SMTP no es necesario para registro/login con este flujo.
 
-La propiedad es inmutable desde la aplicación y desde REST. No se confía en user_metadata ni en el campo access del cliente. La escritura sigue siendo transaccional y versionada. La Copa Encuentro preexistente se asigna al organizador inicial verificado durante la migración.
-
-## Correo
-
-La aplicación incluye registro con correo/contraseña, ingreso con contraseña y enlace de acceso para cuentas existentes. La URL de retorno es /admin en el dominio publicado, configurada en Supabase. Para habilitar registro y confirmaciones a cualquier destinatario, configurar SMTP propio en Supabase: el servicio incorporado tiene restricciones de destinatarios y frecuencia. No desactivar la verificación de email para solucionar la entrega, porque los permisos se vinculan a correos confirmados.
-
-## Verificación
-
-`npm test`: motor deportivo y estadísticas.
-`npm run build`: TypeScript y build Next.
-`tests/database.sql`: cuentas sintéticas en una transacción con rollback; registro, propietario automático, bloqueo anónimo, públicos para miembros, privacidad, metadata falsa, aislamiento de edición, colaboraciones, invitación pendiente, verificación, revocación y conflictos de versión.
+`npm test`: motor deportivo y validación. `npm run build`: TypeScript y Next.js. `tests/database.sql`: prueba aislada con rollback de perfiles con nombre, alta inmediata, propietarios, espectadores, privacidad, metadata falsa, permisos por cuenta, prohibición de delegar, revocación y conflictos. La migración final agrega el modelo sin eliminar tablas ni registros antiguos.
