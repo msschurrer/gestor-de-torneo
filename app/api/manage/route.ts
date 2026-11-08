@@ -1,3 +1,4 @@
+import {prepareTournamentSave} from '../../../lib/tournament-sync';
 import {formatValidationError} from '../../../lib/form-errors';
 import {validatePlayoffs} from '../../../lib/playoffs';
 import {NextRequest,NextResponse} from 'next/server';
@@ -11,7 +12,7 @@ export async function POST(req:NextRequest){
  if(!/^[a-f0-9]{64}$/.test(key))return NextResponse.json({error:'Abrí tu enlace privado de acceso.'},{status:403});
  const body=await req.json(),db=supabase(undefined,key);
  if(body.action==='save'){
- const t=tournamentSchema.parse(body.tournament);
+ const t=prepareTournamentSave(tournamentSchema.parse(body.tournament));
  if(t.matches.length){const issues=validateFixture(t.matches,t.settings);if(issues.length)throw Error(issues.join(' '));validatePlayoffs(t);const league=t.matches.filter(m=>m.kind!=='playoff');const expected=pairings(t.entrants,t.settings);const k=(m:{round:number;home:string;away:string;kind:string})=>`${m.round}:${m.home}:${m.away}:${m.kind}`;if(expected.length!==league.length||expected.some(m=>!league.some(x=>k(x)===k(m))))throw Error('Los enfrentamientos no coinciden con el formato.');}
  if(t.status!=='draft'&&!t.matches.length)throw Error('Generá el fixture antes de publicar.');
  const result=await db.rpc('save_link_tournament',{payload:t,expected_version:t.version});if(result.error)throw result.error;
