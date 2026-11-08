@@ -10,7 +10,7 @@ export function pairings(entrants:Entrant[],s:Settings):Match[]{
  function add(home:string,away:string,round:number,group:number|null,kind:Match['kind']){result.push({id:stableId(`${s.seed}:${home}:${away}:${round}:${kind}`),home,away,round,group,kind,pitch:'',slot:-1,startsAt:'',status:'scheduled',homeScore:null,awayScore:null,locked:false,events:[],note:'',published:false});}
  for(let leg=0;leg<s.legs;leg++)for(let r=0;r<rounds;r++){
  const byes:{id:string;group:number}[]=[];
- schedules.forEach((rs,g)=>{const rr=rs[r];if(!rr){groups[g].forEach(id=>byes.push({id,group:g}));return;}rr.pairs.forEach(([a,b])=>add(leg%2?b:a,leg%2?a:b,leg*rounds+r+1,g,'internal'));if(rr.bye)byes.push({id:rr.bye,group:g});});
+ schedules.forEach((rs,g)=>{const rr=rs[r];if(!rr){if(!s.strictByes)groups[g].forEach(id=>byes.push({id,group:g}));return;}rr.pairs.forEach(([a,b])=>add(leg%2?b:a,leg%2?a:b,leg*rounds+r+1,g,'internal'));if(rr.bye)byes.push({id:rr.bye,group:g});});
  if(s.interzonal)while(byes.length>1){const a=byes.shift()!;const options=byes.map((b,i)=>({b,i,key:[a.id,b.id].sort().join(':'),cost:b.group===a.group?Infinity:(used.get([a.id,b.id].sort().join(':'))||0)})).sort((x,y)=>x.cost-y.cost||hash(x.key+s.seed)-hash(y.key+s.seed));if(!Number.isFinite(options[0].cost))continue;const b=byes.splice(options[0].i,1)[0];used.set(options[0].key,options[0].cost+1);add(a.id,b.id,leg*rounds+r+1,null,'interzonal');}
  }
  if(s.equalMatches){
