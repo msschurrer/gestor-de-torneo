@@ -13,6 +13,9 @@ export async function POST(req:NextRequest){
  const body=await req.json(),db=supabase(undefined,key);
  if(body.action==='save'){
  const t=prepareTournamentSave(tournamentSchema.parse(body.tournament));
+ // Reject stale browser snapshots before entering the transactional write.
+ // The RPC still enforces expected_version atomically for simultaneous saves.
+ if(t.version>0){const current=await db.rpc('get_link_tournament',{tid:t.id});if(current.error)throw current.error;if(current.data?.version!==t.version)return NextResponse.json({error:'Otro colaborador modificó el torneo. Recargá antes de guardar.'},{status:409,headers:{'Cache-Control':'no-store'}});}
  if(t.matches.length){const issues=validateFixture(t.matches,t.settings);if(issues.length)throw Error(issues.join(' '));validatePlayoffs(t);const league=t.matches.filter(m=>m.kind!=='playoff');const expected=pairings(t.entrants,t.settings);const k=(m:{round:number;home:string;away:string;kind:string})=>`${m.round}:${m.home}:${m.away}:${m.kind}`;if(expected.length!==league.length||expected.some(m=>!league.some(x=>k(x)===k(m))))throw Error('Los enfrentamientos no coinciden con el formato.');}
  if(t.status!=='draft'&&!t.matches.length)throw Error('Generá el fixture antes de publicar.');
  const result=await db.rpc('save_link_tournament',{payload:t,expected_version:t.version});if(result.error)throw result.error;
