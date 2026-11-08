@@ -1,3 +1,9 @@
+# Acceso directo temporal
+
+La web abre sin cuenta, registro ni confirmación de correo. Muestra exclusivamente torneos públicos publicados, fixtures, resultados y estadísticas. Las rutas /admin ya no presentan formularios de usuarios. La administración desde la interfaz queda pausada hasta definir el acceso de edición sin usuarios. El backend conserva los permisos de escritura y los datos existentes para una actualización posterior.
+
+La lectura pública usa list_public_tournaments(), una proyección explícita que excluye propietarios, privados, borradores y partidos no publicados. POST sigue protegido; no se habilita escritura pública.
+
 # Gestor de Torneos
 
 Web app independiente de FOCOemergency. Next.js App Router, React, TypeScript, Tailwind CSS, Zod y Supabase PostgreSQL/Auth/Storage. GitHub: msschurrer/gestor-de-torneo. Vercel: https://gestor-torneos-kappa.vercel.app.
@@ -27,7 +33,7 @@ La edición guarda un agregado versionado y su proyección normalizada en una so
 
 `tests/database.sql` prueba el aislamiento usando cuentas sintéticas, sin correos reales y con rollback completo. Incluye espectadores, propietarios, colaboradores, privacidad, verificación de correo, nombres, permisos por cuenta, revocación y concurrencia.
 
-## Autenticación con verificación de correo
+## Configuración de autenticación conservada (interfaz retirada)
 
 Confirm email está activado en Supabase Authentication → Sign In / Providers. El registro requiere nombre, apellido, correo y contraseña de al menos 8 caracteres. Hay que confirmar el enlace recibido antes del primer ingreso. La base también exige email_confirmed_at para acceder a torneos. Las cuentas que ya estaban confirmadas conservan su acceso.
 

@@ -85,5 +85,20 @@ select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee14'
 set local role authenticated;
 do $$begin if public.can_edit_tournament('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL revocation ineffective';end if;end$$;
 reset role;
+select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee11',true);
+set local role authenticated;
+select public.save_tournament(jsonb_set((select x from jsonb_array_elements(public.list_tournaments()) x where x->>'id'='eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21'),'{visibility}','"public"'),3);
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+set local role anon;
+do $$declare docs jsonb;begin
+ docs:=public.list_public_tournaments();
+ if not exists(select 1 from jsonb_array_elements(docs) x where x->>'id'='eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL public access unavailable';end if;
+ if exists(select 1 from jsonb_array_elements(docs) x where x->>'id'='eeeeeeee-eeee-4eee-aeee-eeeeeeeeee22') then raise exception 'FAIL private tournament exposed';end if;
+ if exists(select 1 from jsonb_array_elements(docs) x where x->>'visibility'<>'public' or x->>'status'='draft' or x->>'access'<>'viewer' or x ? 'owner_id' or x ? 'ownerId') then raise exception 'FAIL public projection leaks';end if;
+ if exists(select 1 from jsonb_array_elements(docs) x cross join lateral jsonb_array_elements(x->'matches') m where m->>'published'<>'true') then raise exception 'FAIL unpublished match leaked';end if;
+ begin perform public.save_tournament(docs->0,1);raise exception 'FAIL anonymous write';exception when insufficient_privilege then null;end;
+end$$;
+reset role;
 rollback;
 select 'PASS: registration, owner assignment, viewer boundaries, private isolation, forged roles rejected, collaborators, owner-only delegation/privacy, unverified access denied, profile names, no email-based grants, revocation and concurrency' as result;
