@@ -1,3 +1,9 @@
+## Carga de partidos y equipos
+
+El marcador se carga únicamente en el cuadro principal del partido. Info del partido aplica goles, tarjetas y observaciones al borrador local; Guardar resultado confirma conjuntamente el marcador y los eventos. La carga del marcador no se modifica desde ese diálogo. Posiciones y estadísticas se recalculan desde los resultados; el administrador puede revisar los datos cargados antes de publicarlos.
+
+Equipos permite editar nombres, planteles y cuerpo técnico (DT, ayudante, delegado y otros con función opcional). Borrar un equipo o cambiarlo de zona invalida el fixture sin resultados, que debe regenerarse; si ya hay resultados o eventos no se permite alterar esa estructura. Un jugador con eventos registrados puede editarse pero no borrarse. Los integrantes del cuerpo técnico se conservan en el documento del torneo y se muestran en la ficha pública del equipo.
+
 ## Eliminatorias y equilibrio de partidos
 
 Configuración permite habilitar eliminatorias a partido único desde final, semifinales, cuartos, octavos o dieciseisavos. Se clasifican cantidades iguales por zona cuando la distribución es compatible, o los mejores de una tabla general ordenada por puntos por partido. Los cruces siguientes se construyen con los ganadores y un empate requiere indicar quién clasifica. La fase inicial debe estar finalizada y publicada antes de generar la primera instancia. Las eliminatorias no suman a las posiciones de zona. Las instancias nuevas deben recibir día/hora y publicarse.
