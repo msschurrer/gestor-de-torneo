@@ -17,7 +17,7 @@ export function pairings(entrants:Entrant[],s:Settings):Match[]{
 }
 export function roundSlots(s:Settings,round:number,matches:Match[]):string[]{
  if(!s.autoSchedule)return s.slots;
- const day=s.roundCalendar?.find(d=>d.round===round);const start=day?.startTime||'19:00';
+ const day=s.roundCalendar?.find(d=>d.round===round);const start=day?.startTime||s.defaultStartTime||'19:00';
  const [h,min]=start.split(':').map(Number);const count=Math.max(1,Math.ceil(matches.filter(m=>m.round===round).length/s.pitches.length));
  const step=s.duration+(s.halftime||0)+s.buffer;
  return Array.from({length:count},(_,i)=>{const total=h*60+min+i*step;return `${String(Math.floor(total/60)%24).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;});
