@@ -1,8 +1,9 @@
-# Acceso directo temporal
+# Acceso directo con enlaces privados
 
-La web abre sin cuenta, registro ni confirmación de correo. Muestra exclusivamente torneos públicos publicados, fixtures, resultados y estadísticas. Las rutas /admin ya no presentan formularios de usuarios. La administración desde la interfaz queda pausada hasta definir el acceso de edición sin usuarios. El backend conserva los permisos de escritura y los datos existentes para una actualización posterior.
+La web permite ver torneos públicos y crear torneos sin registro. Mis torneos muestra los accesos guardados en este navegador. El creador administra su torneo con un enlace privado de recuperación y puede emitir/revocar enlaces individuales de colaboradores. Solo el creador puede cambiar privacidad y delegar acceso. Sin el enlace de creador no hay recuperación automática al borrar los datos del navegador. Ver docs/ACCESO_POR_TORNEO.md para el modelo vigente.
 
-La lectura pública usa list_public_tournaments(), una proyección explícita que excluye propietarios, privados, borradores y partidos no publicados. POST sigue protegido; no se habilita escritura pública.
+La lectura pública excluye privados, borradores y partidos no publicados. Las escrituras requieren un secreto de 256 bits válido para ese torneo; no se conceden permisos generales a visitantes. Las cuentas históricas se conservan y no se muestran en la interfaz.
+
 
 # Gestor de Torneos
 
