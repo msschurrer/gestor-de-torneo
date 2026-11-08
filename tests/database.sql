@@ -66,12 +66,13 @@ do $$declare p jsonb;begin
  begin perform public.get_tournament_collaborators('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21');raise exception 'FAIL editor sees invitation emails';exception when insufficient_privilege then null;end;
 end$$;
 reset role;
--- A new, unverified email account has ordinary viewing access, no inherited invitation.
+-- An unverified account cannot access tournaments, even with a valid authenticated role.
 insert into auth.users(id,email,raw_user_meta_data) values('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee15','pending-editor@example.invalid','{"first_name":"New","last_name":"Person","role":"admin"}');
 select set_config('request.jwt.claim.sub','eeeeeeee-eeee-4eee-aeee-eeeeeeeeee15',true);
 set local role authenticated;
 do $$begin
- if not private.active_member() then raise exception 'FAIL immediate member unavailable';end if;
+ if private.active_member() then raise exception 'FAIL unverified member admitted';end if;
+ if jsonb_array_length(public.list_tournaments())<>0 then raise exception 'FAIL unverified tournament access';end if;
  if public.can_edit_tournament('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL new account inherits editing';end if;
  if not exists(select 1 from public.profiles where user_id=auth.uid() and first_name='New' and last_name='Person') then raise exception 'FAIL name not stored';end if;
 end$$;
@@ -85,4 +86,4 @@ set local role authenticated;
 do $$begin if public.can_edit_tournament('eeeeeeee-eeee-4eee-aeee-eeeeeeeeee21') then raise exception 'FAIL revocation ineffective';end if;end$$;
 reset role;
 rollback;
-select 'PASS: registration, owner assignment, viewer boundaries, private isolation, forged roles rejected, collaborators, owner-only delegation/privacy, immediate unverified registration, profile names, no email-based grants, revocation and concurrency' as result;
+select 'PASS: registration, owner assignment, viewer boundaries, private isolation, forged roles rejected, collaborators, owner-only delegation/privacy, unverified access denied, profile names, no email-based grants, revocation and concurrency' as result;

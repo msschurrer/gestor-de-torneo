@@ -4,7 +4,7 @@ Web app independiente de FOCOemergency. Next.js App Router, React, TypeScript, T
 
 ## Uso
 
-1. Abrir la web, elegir Crear cuenta, ingresar nombre, apellido, correo y contraseña y entrar directamente, sin verificar el correo. Una cuenta registrada puede ver todos los torneos públicos.
+1. Abrir la web, elegir Crear cuenta, ingresar nombre, apellido, correo y contraseña y confirmar el correo mediante el enlace recibido. Una cuenta registrada puede ver todos los torneos públicos.
 2. En Mis torneos → Crear torneo, configurar competencia, equipos, planteles, zonas, canchas y turnos.
 3. Generar fixture, revisar equidad y publicar. Liga de una o varias zonas, ida/vuelta e interzonales de libres.
 4. Elegir visibilidad: público para miembros registrados o privado para propietario y colaboradores. Los borradores se mantienen privados.
@@ -25,15 +25,15 @@ Aplicar `supabase/migrations/*.sql` en orden. El script `supabase/seed.sql` est�
 
 La edición guarda un agregado versionado y su proyección normalizada en una sola transacción. Los snapshots de edición son privados; las lecturas usan `list_tournaments()`. Las proyecciones, auditoría y Storage tienen RLS por torneo. La propiedad deriva del UID autenticado. El rol member no otorga administración global. Las funciones privadas de autorización no usan user_metadata.
 
-`tests/database.sql` prueba el aislamiento usando cuentas sintéticas, sin correos reales y con rollback completo. Incluye espectadores, propietarios, colaboradores, privacidad, registro inmediato, nombres, permisos por cuenta, revocación y concurrencia.
+`tests/database.sql` prueba el aislamiento usando cuentas sintéticas, sin correos reales y con rollback completo. Incluye espectadores, propietarios, colaboradores, privacidad, verificación de correo, nombres, permisos por cuenta, revocación y concurrencia.
 
-## Autenticación sin verificación de correo
+## Autenticación con verificación de correo
 
-Por decisión del propietario, Confirm email está desactivado en Supabase Authentication → Sign In / Providers. El registro requiere nombre, apellido, correo y contraseña de al menos 8 caracteres. El correo funciona como usuario único, pero no se prueba que le pertenezca a la persona. El alta entrega sesión de inmediato; el login usa contraseña. La app no envía enlaces, confirmaciones ni recuperación por correo, y este flujo no necesita SMTP.
+Confirm email está activado en Supabase Authentication → Sign In / Providers. El registro requiere nombre, apellido, correo y contraseña de al menos 8 caracteres. Hay que confirmar el enlace recibido antes del primer ingreso. La base también exige email_confirmed_at para acceder a torneos. Las cuentas que ya estaban confirmadas conservan su acceso.
 
-Las sesiones existentes y los torneos se conservan. Una persona que antes entraba por enlace y no tiene contraseña debe usar su sesión existente y abrir Mis torneos → Mi cuenta → Definir contraseña. No se reemplazan contraseñas ni se transfieren cuentas por conocer una dirección de correo. Si perdió también esa sesión, hace falta asistencia del propietario con comprobación por otro canal.
+El proveedor de correo integrado tiene límites de envío y restricciones de destinatarios. Configurar SMTP propio para abrir el registro al público general. No se ha comprobado la recepción en una casilla externa.
 
-Para autorizar colaboradores, cada miembro comparte su código UUID desde Mi cuenta. El propietario busca ese código y confirma la cuenta concreta. No hay permisos pendientes activables por email. Las concesiones se vinculan al user_id real, con revocación lógica y auditoría. Los nombres y el correo son declarados por el usuario, no identidad verificada.
+Los colaboradores se autorizan por el código UUID de Mi cuenta. Solo el propietario puede otorgar o revocar permisos, que quedan vinculados a la cuenta concreta.
 
 ## Despliegue
 
