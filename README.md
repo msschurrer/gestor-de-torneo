@@ -1,3 +1,7 @@
+## Calendario por fecha
+
+Los torneos nuevos configuran tiempo total de juego (sin entretiempo), entretiempo y pausa entre partidos. Al generar el fixture, cada fecha permite elegir su día y hora de inicio. Los horarios posteriores se calculan automáticamente según las canchas y cantidad de partidos. No se solicita intervalo de días ni lista de turnos. Los días pendientes pueden guardarse en borrador y deben completarse antes de publicar. Se preservan los formatos anteriores y los resultados/bloqueos existentes. Los campos internos de calendario anteriores se conservan para compatibilidad, sin mostrarlos en el formulario.
+
 # Acceso directo con enlaces privados
 
 La web permite ver torneos públicos y crear torneos sin registro. Mis torneos muestra los accesos guardados en este navegador. El creador administra su torneo con un enlace privado de recuperación y puede emitir/revocar enlaces individuales de colaboradores. Solo el creador puede cambiar privacidad y delegar acceso. Sin el enlace de creador no hay recuperación automática al borrar los datos del navegador. Ver docs/ACCESO_POR_TORNEO.md para el modelo vigente.

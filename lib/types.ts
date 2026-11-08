@@ -1,4 +1,5 @@
-export type Settings = { groups: number; legs: number; interzonal: boolean; interzonalPoints: boolean; interzonalStats: boolean; pitches: string[]; slots: string[]; duration: number; buffer: number; startDate: string; intervalDays: number; mode: 'rotation'|'balanced'|'manual'; seed: number; win: number; draw: number; loss: number; tieBreakers: ('points'|'difference'|'goals'|'headToHead'|'ppg')[]; yellowLimit: number; timezone: string };
+export type RoundCalendar = {round:number;date:string;startTime:string};
+export type Settings = { autoSchedule?:boolean; halftime?:number; roundCalendar?:RoundCalendar[]; groups: number; legs: number; interzonal: boolean; interzonalPoints: boolean; interzonalStats: boolean; pitches: string[]; slots: string[]; duration: number; buffer: number; startDate: string; intervalDays: number; mode: 'rotation'|'balanced'|'manual'; seed: number; win: number; draw: number; loss: number; tieBreakers: ('points'|'difference'|'goals'|'headToHead'|'ppg')[]; yellowLimit: number; timezone: string };
 export type Player = { id: string; name: string; number: number };
 export type Entrant = { id: string; name: string; group: number; players: Player[] };
 export type Event = { id: string; teamId: string; playerId: string; type: 'goal'|'own_goal'|'yellow'|'red'|'second_yellow'; minute: number|null; voided?: boolean };
