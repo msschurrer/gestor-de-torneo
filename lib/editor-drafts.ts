@@ -1,7 +1,7 @@
 import type {Tournament} from './types';
 export type EditorDraft={tournament:Tournament;step:number;names:string;dirty:boolean;savedAt:string};
 const prefix='gestor-editor-draft-v1:',inputPrefix='gestor-editor-input-v1:',newKey='gestor-new-draft-v1';
-export function readDraft(id?:string|null):EditorDraft|null{try{if(!id)return null;const d=JSON.parse(localStorage.getItem(prefix+id)||'null');return d?.tournament?.id===id&&d.tournament.settings&&Array.isArray(d.tournament.entrants)&&Array.isArray(d.tournament.matches)?{...d,step:Number.isInteger(d.step)&&d.step>=0&&d.step<=4?d.step:0,names:typeof d.names==='string'?d.names:''}:null;}catch{return null;}}
+export function readDraft(id?:string|null):EditorDraft|null{try{if(!id)return null;const d=JSON.parse(localStorage.getItem(prefix+id)||'null');return d?.tournament?.id===id&&d.tournament.settings&&Array.isArray(d.tournament.entrants)&&Array.isArray(d.tournament.matches)?{...d,step:Number.isInteger(d.step)&&d.step>=0&&d.step<=10?d.step:0,names:typeof d.names==='string'?d.names:''}:null;}catch{return null;}}
 export function currentNewDraftId():string|null{try{return localStorage.getItem(newKey);}catch{return null;}}
 export function writeDraft(draft:EditorDraft):boolean{try{localStorage.setItem(prefix+draft.tournament.id,JSON.stringify(draft));if(draft.tournament.version===0)localStorage.setItem(newKey,draft.tournament.id);return true;}catch{return false;}}
 export function clearDraft(id:string){try{localStorage.removeItem(prefix+id);if(currentNewDraftId()===id)localStorage.removeItem(newKey);}catch{}}
