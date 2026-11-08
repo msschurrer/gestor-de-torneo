@@ -1,3 +1,9 @@
+## Eliminatorias y equilibrio de partidos
+
+Configuración permite habilitar eliminatorias a partido único desde final, semifinales, cuartos, octavos o dieciseisavos. Se clasifican cantidades iguales por zona cuando la distribución es compatible, o los mejores de una tabla general ordenada por puntos por partido. Los cruces siguientes se construyen con los ganadores y un empate requiere indicar quién clasifica. La fase inicial debe estar finalizada y publicada antes de generar la primera instancia. Las eliminatorias no suman a las posiciones de zona. Las instancias nuevas deben recibir día/hora y publicarse.
+
+La opción Todos juegan la misma cantidad agrega encuentros compensatorios cuando hacen falta; pueden repetir rivales, incluso dentro de una zona, y se identifican expresamente. Los interzonales compensatorios siguen la configuración de puntos/estadísticas de interzonales. El reporte Partidos por equipo permite comprobar el reparto. Las posiciones se consultan en Posiciones y publicación o en el portal público por zona.
+
 ## Calendario por fecha
 
 Los torneos nuevos configuran tiempo total de juego (sin entretiempo), entretiempo y pausa entre partidos. Al generar el fixture, cada fecha permite elegir su día y hora de inicio. Los horarios posteriores se calculan automáticamente según las canchas y cantidad de partidos. No se solicita intervalo de días ni lista de turnos. Los días pendientes pueden guardarse en borrador y deben completarse antes de publicar. Se preservan los formatos anteriores y los resultados/bloqueos existentes. Los campos internos de calendario anteriores se conservan para compatibilidad, sin mostrarlos en el formulario.
