@@ -4,7 +4,8 @@ import {Lock,Check,Loader2,Info} from 'lucide-react';
 import type {Tournament,Match,RoundCalendar} from '../lib/types';
 import {roundSlots} from '../lib/engine';
 import {stageName,roundLabel} from '../lib/playoffs';
-import {readInputDraft,writeInputDraft,clearInputDraft} from '../lib/editor-drafts';
+import {draftStore} from '../lib/editor-drafts';
+import {useIdentity} from './session-provider';
 import RoundCalendarEditor from './round-calendar';
 export default function FixtureRounds({t,filter,busy,onCalendar,onMatch,onResult,onSaveResult}:{t:Tournament;filter:string;busy:boolean;onCalendar:(days:RoundCalendar[])=>void;onMatch:(m:Match)=>void;onResult:(id:string)=>void;onSaveResult:(m:Match)=>Promise<void>}){
  const rounds=[...new Set(t.matches.map(m=>m.round))].sort((a,b)=>a-b).filter(r=>filter==='all'||r===+filter);
@@ -12,6 +13,7 @@ export default function FixtureRounds({t,filter,busy,onCalendar,onMatch,onResult
 }
 
 function InlineMatch({t,m,busy,onMatch,onResult,onSave}:{t:Tournament;m:Match;busy:boolean;onMatch:(m:Match)=>void;onResult:(id:string)=>void;onSave:(m:Match)=>Promise<void>}){
+ const{readInputDraft,writeInputDraft,clearInputDraft}=draftStore(useIdentity().session?.user.id);
  const [draft]=useState(()=>{const value=readInputDraft<{home:string;away:string;penHome?:string;penAway?:string;winner:string;baseHome:number|null;baseAway:number|null}>(t.id,'score-'+m.id);return value&&value.baseHome===m.homeScore&&value.baseAway===m.awayScore?value:null;});
  const [homeScore,setHomeScore]=useState(draft?.home??(m.homeScore===null?'':String(m.homeScore))),[awayScore,setAwayScore]=useState(draft?.away??(m.awayScore===null?'':String(m.awayScore))),[penHome,setPenHome]=useState(draft?.penHome??(m.homePenalties==null?'':String(m.homePenalties))),[penAway,setPenAway]=useState(draft?.penAway??(m.awayPenalties==null?'':String(m.awayPenalties))),[saving,setSaving]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
  const previousScore=useRef([m.homeScore,m.awayScore,m.homePenalties,m.awayPenalties]);

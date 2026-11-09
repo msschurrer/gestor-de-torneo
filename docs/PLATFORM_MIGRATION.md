@@ -33,7 +33,7 @@ No se adjudican torneos al primer usuario ni al superadministrador automáticame
 
 ## Pruebas realizadas y límites
 
-- `npm test`: 62 pruebas deportivas, persistencia local, fixtures, penales, sanciones, goles, actualización de derivados y rechazo de solicitudes API sin credenciales válidas.
+- `npm test`: 66 pruebas deportivas, persistencia local, fixtures, penales, sanciones, goles, actualización de derivados y rechazo de solicitudes API sin credenciales válidas.
 - `npm run test:platform`: PostgreSQL aislado con PGlite, migraciones históricas, baseline de funciones inspeccionadas y migración nueva. Comprueba acceso anónimo denegado, dos torneos de un creador, acceso ajeno denegado, invitación/consumo/reutilización, permisos exclusivos por torneo, revocación sobre sesión existente, caducidad, suspensión, rol global, auditoría, bypass REST, promoción de rol, conflicto de versión, vinculación antigua sin pérdida de datos e invalidez de enlaces antiguos.
 - `npm run build`: compilación y TypeScript.
 - Las pruebas SQL simulan identidades autenticadas y no sustituyen las pruebas reales de Supabase Auth, correo, callbacks, persistencia de sesiones entre dispositivos, carreras simultáneas ni WebAuthn. Esos escenarios deben completarse en una base de ensayo con Auth antes de habilitar producción.
@@ -58,3 +58,7 @@ La versión de producción anterior permanece intacta hasta aprobación; la rama
 ## Actualización del 9 de noviembre
 
 Se continúa exclusivamente en la rama de desarrollo de GitHub y en entornos locales. No se intentará crear una rama de Supabase ni contratar Pro. No se asignó superadministrador y no se aplicaron migraciones a producción. Los cambios de permisos, invitaciones, vinculación y retirada de endpoints antiguos deben revisarse y autorizarse antes de la migración de producción.
+
+## Revisión adicional de sesiones y recuperación
+
+Se aislaron los borradores locales por cuenta, incluidos marcadores y eventos. Los borradores anteriores permanecen sin asignación automática. Se conserva el secreto del enlace antiguo durante el ingreso para que el creador pueda demostrar titularidad al vincular. Las respuestas de solicitudes de otra cuenta se descartan, se retira el estado de edición al cambiar de identidad y se comprueba la revocación del torneo al volver a la pestaña y cada 15 segundos. No se aplicaron cambios a producción.

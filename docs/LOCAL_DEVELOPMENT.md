@@ -55,3 +55,13 @@ La configuración real de Supabase Auth puede imponer confirmación, límites de
 ## Superadministrador
 
 No hay asignación automática. `supabase/admin/assign_superadmin.sql` es una operación manual, fuera de las migraciones y del registro, que exige UUID y correo de la misma cuenta confirmada y habilitada. Registra la asignación en auditoría. No se ejecutó ni se eligió ninguna cuenta. Antes de usarlo en producción debe confirmarse el correo y autorizarse la operación.
+
+## Aislamiento de datos en un navegador compartido
+
+Los borradores del editor, los marcadores pendientes y la información parcial de partidos se guardan por identificador de cuenta. Cambiar de cuenta no muestra ni reutiliza borradores de la anterior. Una respuesta tardía de una sesión anterior no se aplica a la cuenta nueva. Los borradores locales anteriores a las cuentas permanecen sin borrar en sus claves originales y no se adjudican automáticamente a quien ingrese después; su recuperación requiere una revisión de titularidad.
+
+Los enlaces antiguos de creador se conservan temporalmente en sessionStorage por torneo durante el ingreso. Se retiran de la barra de direcciones y se eliminan del estado pendiente al completar una vinculación validada por el servidor. No se convierten en permisos por sí solos.
+
+La administración vuelve a comprobar el permiso del torneo al enfocar la pestaña y cada 15 segundos. Si el servidor informa revocación, retira el editor y conserva el borrador de esa cuenta. Los controles de escritura del servidor siguen aplicándose a cada guardado, sin esperar al refresco de la interfaz.
+
+Al elegir Crear torneo se inicia un formulario nuevo y se mantiene el borrador anterior dentro de la cuenta. El cambio de cuenta desmonta el estado del editor. Una respuesta 401 cierra únicamente la sesión local que originó esa solicitud, después de comprobar que no se cambió a otra cuenta durante la espera.

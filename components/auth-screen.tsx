@@ -4,11 +4,12 @@ import {useRouter,useSearchParams} from 'next/navigation';
 import Link from 'next/link';
 import {browserDb} from '../lib/supabase';
 import {useIdentity} from './session-provider';
+import {startNewDraft} from '../lib/editor-drafts';
 export default function AuthScreen({next='/admin'}:{next?:string}){
  const router=useRouter(),query=useSearchParams(),{session,loading}=useIdentity();
  const[register,setRegister]=useState(false),[email,setEmail]=useState(''),[name,setName]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
- const recovery=query.get('recuperar')==='1';const destination=query.get('crear')?'/admin/torneos/nuevo':next;
- useEffect(()=>{if(session&&!recovery)router.replace(destination);},[session,recovery,destination,router]);
+ const creating=!!query.get('crear');const recovery=query.get('recuperar')==='1';const destination=creating?'/admin/torneos/nuevo':next;
+ useEffect(()=>{if(session&&!recovery){if(creating)startNewDraft(session.user.id);router.replace(destination);}},[session,recovery,destination,router,creating]);
  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage('');setError('');try{
   const db=browserDb();
   if(recovery){const {error}=await db.auth.updateUser({password});if(error)throw error;router.replace('/admin');return;}
