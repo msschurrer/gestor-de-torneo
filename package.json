@@ -9,7 +9,11 @@
     "start": "next start --hostname 0.0.0.0",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "test:platform": "node scripts/verify-platform.mjs"
+    "test:platform": "node scripts/verify-platform.mjs",
+    "local:start": "node scripts/local-supabase.mjs start",
+    "local:env": "node scripts/local-supabase.mjs env",
+    "local:stop": "node scripts/local-supabase.mjs stop",
+    "test:auth:local": "node --import tsx scripts/verify-local-auth.ts"
   },
   "keywords": [],
   "author": "",

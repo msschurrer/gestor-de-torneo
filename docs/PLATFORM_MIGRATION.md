@@ -33,17 +33,17 @@ No se adjudican torneos al primer usuario ni al superadministrador automáticame
 
 ## Pruebas realizadas y límites
 
-- `npm test`: 58 pruebas deportivas, persistencia local, fixtures, penales, sanciones, goles y actualización de derivados.
+- `npm test`: 62 pruebas deportivas, persistencia local, fixtures, penales, sanciones, goles, actualización de derivados y rechazo de solicitudes API sin credenciales válidas.
 - `npm run test:platform`: PostgreSQL aislado con PGlite, migraciones históricas, baseline de funciones inspeccionadas y migración nueva. Comprueba acceso anónimo denegado, dos torneos de un creador, acceso ajeno denegado, invitación/consumo/reutilización, permisos exclusivos por torneo, revocación sobre sesión existente, caducidad, suspensión, rol global, auditoría, bypass REST, promoción de rol, conflicto de versión, vinculación antigua sin pérdida de datos e invalidez de enlaces antiguos.
 - `npm run build`: compilación y TypeScript.
 - Las pruebas SQL simulan identidades autenticadas y no sustituyen las pruebas reales de Supabase Auth, correo, callbacks, persistencia de sesiones entre dispositivos, carreras simultáneas ni WebAuthn. Esos escenarios deben completarse en una base de ensayo con Auth antes de habilitar producción.
-- No se creó una rama de base de datos de Supabase: no existe una de ensayo y crearla puede generar cargos. Hace falta autorización para provisionarla o una base de ensayo ya disponible.
+- No se utiliza ninguna rama alojada ni servicio adicional. La suite SQL corre en PostgreSQL aislado con PGlite y queda configurado Supabase local completo para un equipo con Docker; ver LOCAL_DEVELOPMENT.md. No se modificó producción.
 
 ## Publicación coordinada — requiere confirmación
 
-1. Autorizar una base de ensayo o facilitar una existente. Aplicar ahí la migración y configurar las variables de Preview para esa base. Nunca apuntar una prueba de registro contra producción por defecto.
+1. Ejecutar Supabase local con Docker y completar `npm run test:auth:local`. Si más adelante se ofrece un proyecto gratuito de ensayo, podrá usarse únicamente con costo cero y configuración separada. Nunca apuntar las pruebas de registro contra producción.
 2. Configurar Supabase Auth para registro público con correo y contraseña, Site URL y redirect URLs permitidas (`/admin`, `/admin/torneos/nuevo`, `/invitacion`, `/ingresar?recuperar=1`). Revisar proveedor SMTP y límites de envío. No desactivar verificación automáticamente.
-3. Activar `PLATFORM_ACCOUNTS_READY=true` solamente en el entorno que ya tenga la migración. Sin esa bandera, la API devuelve 503 y el formulario de ingreso/registro informa que la versión está en validación.
+3. No hay bandera de bloqueo del registro. La disponibilidad del editor se detecta por la versión de esquema, mientras que registro, ingreso y recuperación permanecen implementados de forma independiente. Una migración ausente produce un error explícito en la API administrativa, sin otorgar permisos implícitos.
 4. Probar registro real de creador, confirmación de correo, creación de varios torneos, ingreso de una segunda cuenta, aceptación, revocación, cierre de sesión, recuperación, reapertura desde otro dispositivo y recorrido público–administración. Revisar apariencia móvil con sesión y sin sesión.
 5. Antes de producción, obtener un backup verificado de esquema y datos de public/private y respaldo de identidades de Auth conforme a las herramientas de Supabase, conservado fuera del repositorio. Registrar el commit desplegado y exportar las configuraciones de Auth/Vercel sin imprimir secretos. Ensayar restauración en la base de ensayo.
 6. Confirmar explícitamente qué cuenta recibirá superadministración. Asignar en una operación administrativa controlada por UUID de una cuenta confirmada, no por registro público ni por inferir el primer usuario.
@@ -54,3 +54,7 @@ No se adjudican torneos al primer usuario ni al superadministrador automáticame
 La migración es aditiva y transaccional: si falla antes de commit, PostgreSQL revierte todo. No ejecutar una migración inversa que borre usuarios, invitaciones, titulares o documentos deportivos. Ante un fallo posterior, desactivar la bandera y mantener la consulta pública; reponer el frontend anterior solo como consulta mientras se corrige. No reactivar enlaces de colaboradores revocados ni sobrescribir torneos con snapshots viejos. Si se requiere restaurar el backup, hacerlo primero en un entorno separado y conciliar los cambios posteriores antes de la restauración final autorizada.
 
 La versión de producción anterior permanece intacta hasta aprobación; la rama de actualización es una propuesta integrada y verificable, no una migración aplicada.
+
+## Actualización del 9 de noviembre
+
+Se continúa exclusivamente en la rama de desarrollo de GitHub y en entornos locales. No se intentará crear una rama de Supabase ni contratar Pro. No se asignó superadministrador y no se aplicaron migraciones a producción. Los cambios de permisos, invitaciones, vinculación y retirada de endpoints antiguos deben revisarse y autorizarse antes de la migración de producción.

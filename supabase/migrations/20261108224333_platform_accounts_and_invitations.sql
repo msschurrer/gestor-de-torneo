@@ -120,4 +120,27 @@ do $$declare f record;begin for f in select p.oid::regprocedure signature from p
 -- A protected provisioner never reads role or privilege from user_metadata.
 create or replace function private.provision_member() returns trigger language plpgsql security definer set search_path='' as $$begin
  if new.email_confirmed_at is not null and not coalesce(new.is_anonymous,false) then insert into public.profiles(user_id,role) values(new.id,'member') on conflict(user_id) do nothing;end if;return new;end$$;
+CREATE OR REPLACE FUNCTION private.public_tournament_documents()
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+ select coalesce(jsonb_agg(jsonb_build_object(
+ 'id',t.id,'slug',t.document->'slug','name',t.document->'name','season',t.document->'season',
+ 'category',t.document->'category','description',t.document->'description','rules',t.document->'rules',
+ 'status',t.status,'version',t.document->'version','demo',t.document->'demo',
+ 'settings',t.document->'settings','entrants',t.document->'entrants',
+ 'publicDiscipline',coalesce(t.document->'publicDiscipline','true'::jsonb),
+ 'sanctions',case when coalesce((t.document->>'publicDiscipline')::boolean,true) then coalesce(t.document->'sanctions','[]'::jsonb) else '[]'::jsonb end,
+ 'matches',coalesce((select jsonb_agg(case when coalesce((t.document->>'publicDiscipline')::boolean,true) then m else m||jsonb_build_object('events',coalesce((select jsonb_agg(e) from jsonb_array_elements(m->'events') e where e->>'type' in ('goal','own_goal')),'[]'::jsonb),'note','') end) from jsonb_array_elements(t.document->'matches') m where m->>'published'='true'),'[]'::jsonb),
+ 'visibility','public','access','viewer') order by t.updated_at desc),'[]'::jsonb)
+ from public.tournaments t where t.visibility='public' and t.status<>'draft' and t.deleted_at is null
+$function$;
+
+
+-- Public, non-sensitive readiness; registration does not depend on this schema version.
+create function public.platform_status() returns jsonb language sql immutable security invoker set search_path='' as $$select '{"schemaVersion":2}'::jsonb$$;
+revoke all on function public.platform_status() from public;
+grant execute on function public.platform_status() to anon,authenticated;
 commit;
