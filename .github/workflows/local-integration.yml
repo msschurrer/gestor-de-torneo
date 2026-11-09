@@ -1,0 +1,45 @@
+name: Supabase local integration
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'supabase/**'
+      - 'tests/**'
+      - 'package*.json'
+      - '.github/workflows/local-integration.yml'
+permissions:
+  contents: read
+concurrency:
+  group: local-integration-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  local-auth:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install reviewed dependencies
+        run: npm ci
+      - name: Application tests
+        run: npm test
+      - name: Isolated PostgreSQL permissions
+        run: npm run test:platform
+      - name: Start disposable local Supabase
+        run: npm run local:start
+      - name: Real registration, email and invitation flow
+        run: npm run test:auth:local
+      - name: Compile the integrated app
+        run: npm run build
+      - name: Stop local services
+        if: always()
+        run: npm run local:stop

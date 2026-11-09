@@ -2,7 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {writeFileSync} from 'node:fs';
 const mode=process.argv[2]||'start';
 if(!['start','env','stop'].includes(mode))throw Error('Usá start, env o stop. No se admiten operaciones contra proyectos alojados.');
-const cli=(args,options={})=>{const r=spawnSync('npx',['--yes','supabase@3.0.0',...args],{encoding:'utf8',...options});if(r.error||r.status!==0)throw Error('No se pudo ejecutar Supabase local. Verificá que Docker esté instalado y ejecutándose.');return r.stdout;};
+const cli=(args,options={})=>{const r=spawnSync('npx',['--yes','supabase@3.0.0',...args],{encoding:'utf8',...options});if(r.error||r.status!==0){const diagnostic=String(r.stderr||r.stdout||'').split('\n').filter(line=>!/(?:secret|publishable|anon|service.role|jwt).?key|password|access.token/i.test(line)).slice(-35).join('\n').replace(/[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/g,'[credencial local omitida]');if(diagnostic)console.error(diagnostic);throw Error('No se pudo ejecutar Supabase local. Revisá el diagnóstico local.');}return r.stdout;};
 if(mode==='start'){
  const docker=spawnSync('docker',['info'],{stdio:'ignore'});
  if(docker.error||docker.status!==0){console.error('Supabase local necesita Docker. No se creó ni modificó ningún proyecto en la nube. Podés ejecutar npm run test:platform sin Docker.');process.exit(1);}
