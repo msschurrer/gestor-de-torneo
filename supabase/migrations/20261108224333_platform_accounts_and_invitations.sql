@@ -61,7 +61,11 @@ declare tid uuid; target uuid; inv private.tournament_invitations; doc jsonb; pr
   select * into inv from private.tournament_invitations where secret_hash=sha256(convert_to(secret,'UTF8')) for update;
   if inv.id is null or inv.accepted_at is not null or inv.revoked_at is not null or inv.expires_at<=now() or not exists(select 1 from public.tournaments where id=tid and deleted_at is null) then raise exception 'La invitación venció, ya se utilizó o fue revocada';end if;
   if exists(select 1 from public.tournaments where id=tid and owner_id=auth.uid()) then raise exception 'Ya sos el creador de este torneo';end if;
-  insert into private.tournament_collaborators(tournament_id,email,user_id,enabled) select tid,lower(email),id,true from auth.users where id=auth.uid() on conflict(tournament_id,user_id) do update set enabled=true;
+  -- Preserve older memberships, including pending email invitations and account:UUID rows.
+  update private.tournament_collaborators set enabled=true where tournament_id=tid and user_id=auth.uid();
+  if not found then
+   insert into private.tournament_collaborators(tournament_id,email,user_id,enabled) select tid,lower(email),id,true from auth.users where id=auth.uid() on conflict(tournament_id,email) do update set user_id=excluded.user_id,enabled=true;
+  end if;
   update private.tournament_invitations set accepted_at=now(),accepted_by=auth.uid() where id=inv.id;
   insert into public.audit_logs(actor_user_id,entity_type,entity_id,action,after_json) values(auth.uid(),'invitation',tid,'accept',jsonb_build_object('invitationId',inv.id,'userId',auth.uid()));
   return private.platform_document(tid);
@@ -89,7 +93,7 @@ declare tid uuid; target uuid; inv private.tournament_invitations; doc jsonb; pr
  if operation='read' then return private.platform_document(tid);end if;
  if operation='audit' then return coalesce((select jsonb_agg(x) from(select id,actor_user_id,entity_type,action,created_at,before_json,after_json from public.audit_logs where entity_id=tid order by id desc limit 60)x),'[]');end if;
  if not private.owns_tournament(tid) then raise exception 'Solo el creador puede administrar los accesos' using errcode='42501';end if;
- if operation='accesses' then return jsonb_build_object('owner',(select owner_id from public.tournaments where id=tid),'collaborators',coalesce((select jsonb_agg(jsonb_build_object('userId',user_id,'email',email,'enabled',enabled)) from private.tournament_collaborators where tournament_id=tid),'[]'),'invitations',coalesce((select jsonb_agg(jsonb_build_object('id',id,'label',label,'expiresAt',expires_at,'acceptedAt',accepted_at,'revokedAt',revoked_at) order by created_at desc) from private.tournament_invitations where tournament_id=tid),'[]'));end if;
+ if operation='accesses' then return jsonb_build_object('owner',(select owner_id from public.tournaments where id=tid),'collaborators',coalesce((select jsonb_agg(jsonb_build_object('userId',c.user_id,'email',coalesce(u.email,c.email),'enabled',c.enabled)) from private.tournament_collaborators c left join auth.users u on u.id=c.user_id where c.tournament_id=tid and c.user_id is not null),'[]'),'invitations',coalesce((select jsonb_agg(jsonb_build_object('id',id,'label',label,'expiresAt',expires_at,'acceptedAt',accepted_at,'revokedAt',revoked_at) order by created_at desc) from private.tournament_invitations where tournament_id=tid),'[]'));end if;
  if operation='invite' then
   secret:=args->>'secret';if secret is null or secret!~'^[a-f0-9]{64}$' or char_length(coalesce(args->>'label','')) not between 1 and 80 or coalesce((args->>'days')::integer,0) not between 1 and 30 then raise exception 'Invitación inválida';end if;
   insert into private.tournament_invitations(tournament_id,created_by,secret_hash,label,expires_at) values(tid,auth.uid(),sha256(convert_to(secret,'UTF8')),args->>'label',now()+make_interval(days=>(args->>'days')::integer)) returning * into inv;

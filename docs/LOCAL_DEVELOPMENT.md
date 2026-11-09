@@ -17,7 +17,7 @@ La suite `test:platform` crea PostgreSQL aislado mediante PGlite, carga el esque
 
 ## Supabase completo local
 
-Requisito: Docker instalado y ejecutándose. El entorno de ejecución de este trabajo no dispone de Docker; por eso la suite Auth está preparada y comprobada por TypeScript, pero no ejecutada aquí.
+Requisito: Docker instalado y ejecutándose. El entorno de edición no dispone de Docker. La suite completa se ejecutó correctamente el 9 de noviembre de 2026 en un runner temporal de GitHub Actions con Supabase local y Mailpit.
 
 ```
 npm run local:start
@@ -42,7 +42,7 @@ npm run test:auth:local
 
 La suite rechaza URLs que no sean loopback antes de cualquier solicitud. Crea dos cuentas ficticias con contraseñas aleatorias solo en memoria, encuentra sus correos en Mailpit, verifica la confirmación, inicia sesión y prueba la creación de varios torneos, exclusión de extraños, invitación de un uso, edición por el invitado, revocación con sesión abierta y persistencia tras cerrar sesión. Retira los torneos de prueba al terminar. Las cuentas ficticias quedan únicamente en el volumen local. No imprime contraseñas, tokens ni claves.
 
-Esta suite está lista para ejecutarse en un equipo con Docker. Hasta entonces, sus escenarios no se reportan como aprobados.
+Resultado verificado: registro, confirmación de correo local, sesiones, invitación, edición delegada, revocación y persistencia aprobados en GitHub Actions: https://github.com/msschurrer/gestor-de-torneo/actions/runs/42639144468. También pasaron las 66 pruebas de aplicación, permisos SQL y compilación. El workflow `.github/workflows/local-integration.yml` repite estas pruebas en cada actualización relevante del PR, sin credenciales de producción. Esto no verifica SMTP externo ni navegación entre dispositivos físicos.
 
 ## Registro y preparación del esquema son independientes
 
