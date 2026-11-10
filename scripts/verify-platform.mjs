@@ -3,7 +3,7 @@ import {readFileSync,readdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
 const db=new PGlite();
 await db.exec(`create role anon;create role authenticated;create schema auth;create schema storage;create schema extensions;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,is_anonymous boolean default false,raw_user_meta_data jsonb default '{}',created_at timestamptz default now());create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key,bucket_id text,name text);alter table storage.objects enable row level security;`);
-for(const name of readdirSync('supabase/migrations').filter(n=>!n.includes('platform_accounts')).sort()){
+for(const name of readdirSync('supabase/migrations').filter(n=>n<'20261108224333_platform_accounts_and_invitations.sql').sort()){
  let sql=readFileSync('supabase/migrations/'+name,'utf8');
  sql=sql.replace(/create extension[^;]*;/gi,'');
  try{await db.exec(sql);}catch(e){console.error('Migration failed:',name,e.message);process.exit(1);}
@@ -17,6 +17,7 @@ const legacyBefore=(await db.query('select document from public.tournaments wher
 await db.exec(readFileSync('supabase/migrations/20261108224333_platform_accounts_and_invitations.sql','utf8'));
 assert.deepEqual((await db.query('select document from public.tournaments where id=$1',[legacyId])).rows[0].document,legacyBefore);
 
+await db.exec(readFileSync('supabase/migrations/20261110042615_tournament_rules_pdf.sql','utf8'));
 console.log('Schema and account migration loaded on isolated PostgreSQL.');
 const a='10000000-0000-4000-a000-000000000001',b='10000000-0000-4000-a000-000000000002',s='10000000-0000-4000-a000-000000000003';
 for(const [id,email] of [[a,'owner@example.test'],[b,'guest@example.test'],[s,'super@example.test']])await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[id,email]);
@@ -43,4 +44,20 @@ await db.exec('reset role');await db.query('insert into private.tournament_colla
 await as(a);await rpc('invite',{id:second.id,label:'Pending email migration',days:1,secret:'e'.repeat(64)});await as(b);assert.equal((await rpc('accept',{secret:'e'.repeat(64)})).access,'editor');
 await db.exec('reset role');await db.query('update private.tournament_collaborators set email=$1,enabled=false where tournament_id=$2 and user_id=$3',['account:'+b,second.id,b]);
 await as(a);await rpc('invite',{id:second.id,label:'Legacy account migration',days:1,secret:'f'.repeat(64)});await as(b);assert.equal((await rpc('accept',{secret:'f'.repeat(64)})).access,'editor');await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from private.tournament_collaborators where tournament_id=$1 and user_id=$2',[second.id,b])).rows[0].n,1);console.log('PASS old email and account memberships can accept invitations without duplicates');
-await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from public.tournaments')).rows[0].n,3);console.log('PASS migration retained all test tournaments');await db.close();
+await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from public.tournaments')).rows[0].n,3);console.log('PASS migration retained all test tournaments');
+await db.exec('reset role');
+const tid=second.id,path=tid+'/30000000-0000-4000-a000-000000000001.pdf',otherPath=tid+'/30000000-0000-4000-a000-000000000002.pdf';
+await as(a);await rpc('revoke',{id:tid,userId:b});await db.exec('reset role');
+// Set isolated fixture directly to avoid unrelated optimistic version conflicts.
+await db.query("update public.tournaments set visibility='public',status='published',document=jsonb_set(document,'{settings,rulesPdf}',$2::jsonb) where id=$1",[tid,JSON.stringify({path,name:'Reglamento.pdf',size:100})]);
+await db.exec('grant usage on schema storage to anon,authenticated;grant select,insert on storage.objects to anon,authenticated;');
+await db.query("insert into storage.objects(id,bucket_id,name) values(gen_random_uuid(),'tournament-rules',$1),(gen_random_uuid(),'tournament-rules',$2)",[path,otherPath]);
+await as('');assert.equal((await db.query('select name from storage.objects')).rows.length,1);
+await as(a);await db.exec('reset role');await db.query("update public.tournaments set visibility='private' where id=$1",[tid]);await as('');assert.equal((await db.query('select name from storage.objects')).rows.length,0);
+await as(a);assert.equal((await db.query('select name from storage.objects')).rows.length,2);
+await as(b);assert.equal((await db.query('select name from storage.objects')).rows.length,0);
+await assert.rejects(db.query("insert into storage.objects(id,bucket_id,name) values(gen_random_uuid(),'tournament-rules',$1)",[tid+'/30000000-0000-4000-a000-000000000003.pdf']));
+await as(a);await db.exec('reset role');await db.query("update public.tournaments set visibility='public',document=jsonb_set(document,'{settings,rulesPdf,path}',to_jsonb($2::text)) where id=$1",[tid,otherPath]);await as('');assert.deepEqual((await db.query('select name from storage.objects')).rows.map(x=>x.name),[otherPath]);
+await as(a);await db.exec('reset role');await db.query("update public.tournaments set status='draft' where id=$1",[tid]);await as('');assert.equal((await db.query('select name from storage.objects')).rows.length,0);
+console.log('PASS PDF policies: public attachment only, private/draft denied, owner allowed, outsider denied, replacement revokes old PDF');
+await db.close();
