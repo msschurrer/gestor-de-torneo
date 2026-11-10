@@ -68,3 +68,19 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,
 @media(max-width:380px){.header .brand{font-size:14px;gap:6px}.header .brand-secondary{font-size:12px}.header .brand-icon{width:30px;height:35px}.header .admin-link{font-size:9px;padding:7px}.header .admin-link svg{display:none}.header-inner{gap:6px}.header .menu-button{width:28px}.public-main .detail-stats span{font-size:8px}}
 
 .public-sync-status strong{margin-right:auto;color:#557444;font-weight:600}.public-sync-status{flex-wrap:wrap}.admin-return-strip a{white-space:nowrap}@media(max-width:600px){.header .admin-link{max-width:113px;white-space:normal;line-height:1.2}.public-sync-status{gap:5px;font-size:8px}.public-sync-status strong{font-size:9px}}
+/* Unified accounts and invitations. */
+.header-account-actions{display:flex;align-items:center;gap:9px;margin-left:auto;flex-shrink:0}.header-account-actions .button{font-size:11px;padding:10px 12px;min-height:40px}.header-account-actions .admin-link{margin:0}.header nav .text-link{font-size:11px}.auth-card{max-width:500px;margin:10px auto 35px;padding:30px}.auth-card h1{font-size:30px;margin:8px 0 13px}.auth-card form{display:grid;gap:16px;margin:22px 0}.auth-card label{display:block;font-size:12px}.auth-card input{display:block;width:100%;margin-top:6px;min-height:46px;border:1px solid var(--line);border-radius:8px;padding:11px}.auth-card>.text-link{display:block;font-size:12px;padding:8px 0}.auth-card .button{min-height:45px}.collaborator-row>span{font-size:11px}.collaborator-row{flex-wrap:wrap}.collaborator-row b{overflow-wrap:anywhere}.form-panel>.admin-fixture-tools{margin-top:25px}.form-panel>.admin-fixture-tools>.button{margin:12px 8px 12px 0}
+@media(max-width:950px){.header-inner{gap:12px}.header nav{gap:16px}.header nav a{font-size:11px}.header .brand{font-size:18px}}
+@media(max-width:600px){.header-account-actions{gap:5px}.header-account-actions .button{font-size:10px;padding:8px;gap:3px}.header-account-actions .button svg{display:none}.header-account-actions .admin-link{font-size:10px;padding:8px;min-height:38px}.header .brand{font-size:14px}.header .brand-secondary{font-size:12px}.header .brand-icon{width:30px;height:35px}.header .brand small{font-size:5px;letter-spacing:.6px}.header nav .text-link{padding:13px 0;text-align:left;min-height:44px}.auth-card{padding:23px 18px;margin:5px auto 20px}.auth-card h1{font-size:27px}.auth-card input{font-size:16px}.auth-card label{font-size:12px}}
+@media(max-width:360px){.header .brand small{display:none}.header .brand-icon{display:none}.header .brand{font-size:13px}.header-inner{padding:0 10px}.header-account-actions .button,.header-account-actions .admin-link{font-size:9px}}
+
+/* Account navigation has room for the full set of scoped administration links. */
+@media(max-width:1200px){
+ .header nav{display:none}
+ .header .menu-button{display:inline-flex!important;flex-shrink:0}
+ .header nav.open{position:absolute;display:flex;flex-direction:column;align-items:stretch;gap:0;top:100%;left:auto;right:22px;width:min(320px,calc(100vw - 28px));max-height:calc(100dvh - 100px);overflow-y:auto;margin:0;padding:8px;background:var(--white);border:1px solid var(--line);border-radius:0 0 12px 12px;box-shadow:0 12px 28px #162b271a}
+ .header nav a,.header nav .text-link{display:flex;align-items:center;width:100%;min-height:46px;height:auto;padding:12px 14px;text-align:left;font-size:13px;border-radius:6px}
+ .header nav a:hover,.header nav .text-link:hover{background:var(--bg)}
+ .header nav a.active:after{display:none}
+}
+@media(max-width:600px){.header nav.open{right:14px}.header-account-actions .admin-link{white-space:nowrap}}

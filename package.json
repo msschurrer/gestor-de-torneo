@@ -8,7 +8,12 @@
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
     "test": "node --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:platform": "node scripts/verify-platform.mjs",
+    "local:start": "node scripts/local-supabase.mjs start",
+    "local:env": "node scripts/local-supabase.mjs env",
+    "local:stop": "node scripts/local-supabase.mjs stop",
+    "test:auth:local": "node --import tsx scripts/verify-local-auth.ts"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +28,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",

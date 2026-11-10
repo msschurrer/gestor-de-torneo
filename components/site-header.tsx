@@ -1,23 +1,10 @@
 'use client';
 import Link from 'next/link';
-import {useEffect,useState} from 'react';
-import {Trophy,LayoutDashboard,Menu,X,ArrowLeft} from 'lucide-react';
-const returnKey='gestor-admin-return-v1';
-export default function SiteHeader({path}:{path:string[]}){
- const admin=path[0]==='admin';
- const [open,setOpen]=useState(false),[returnTo,setReturnTo]=useState('');
- const route='/'+path.join('/');
- useEffect(()=>{
-  setOpen(false);
-  const refresh=()=>{try{const remembered=sessionStorage.getItem(returnKey)||'';setReturnTo(/^\/admin(?:\/torneos\/[a-f0-9-]{36})?$/.test(remembered)?remembered:'');}catch{setReturnTo('');}};
-  if(admin){try{sessionStorage.setItem(returnKey,/^\/admin\/torneos\/[a-f0-9-]{36}$/.test(route)?route:'/admin');}catch{/* Navigation remains available without storage. */}}
-  refresh();window.addEventListener('focus',refresh);window.addEventListener('storage',refresh);
-  return()=>{window.removeEventListener('focus',refresh);window.removeEventListener('storage',refresh);};
- },[admin,route]);
- return <header className="header"><div className="header-inner">
-  <Link href={admin?'/admin':'/torneos'} className="brand" aria-label={admin?'Gestor de Torneos · Ir al panel':'Gestor de Torneos · Ver torneos'}><span className="brand-icon"><Trophy size={23}/></span><span>gestor<span className="brand-secondary"> de torneos</span><small>EL JUEGO, ORGANIZADO.</small></span></Link>
-  <nav aria-label="Navegación principal" className={open?'open':''}><Link href="/torneos" onClick={()=>setOpen(false)}>Ver torneos</Link><Link href="/torneos?historial=1" onClick={()=>setOpen(false)}>Finalizados</Link></nav>
-  {(admin||returnTo)&&<Link href={admin?'/admin':returnTo} className="admin-link">{admin?<LayoutDashboard size={16}/>:<ArrowLeft size={16}/>}<span>{admin?'Mi panel':'Cambiar a administración'}</span></Link>}
-  <button className="menu-button icon-button" aria-label={open?'Cerrar menú':'Abrir menú'} aria-expanded={open} onClick={()=>setOpen(!open)}>{open?<X/>:<Menu/>}</button>
- </div></header>;
-}
+import {useEffect,useRef,useState} from 'react';
+import {Trophy,Menu,X,Plus} from 'lucide-react';
+import {useIdentity} from './session-provider';
+import {browserDb} from '../lib/supabase';
+import {startNewDraft} from '../lib/editor-drafts';
+export default function SiteHeader({path}:{path:string[]}){const{session,superadmin}=useIdentity();const[open,setOpen]=useState(false);const headerRef=useRef<HTMLElement>(null);
+ useEffect(()=>{if(!open)return;function dismiss(event:PointerEvent){if(!headerRef.current?.contains(event.target as Node))setOpen(false);}function escape(event:KeyboardEvent){if(event.key==='Escape'){setOpen(false);headerRef.current?.querySelector<HTMLButtonElement>('.menu-button')?.focus();}}document.addEventListener('pointerdown',dismiss);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',dismiss);document.removeEventListener('keydown',escape);};},[open]);
+ const admin=path[0]==='admin';return <header ref={headerRef} className="header"><div className="header-inner"><Link href="/" className="brand" aria-label="Gestor de Torneos · Inicio"><span className="brand-icon"><Trophy size={23}/></span><span>gestor<span className="brand-secondary"> de torneos</span><small>EL JUEGO, ORGANIZADO.</small></span></Link><nav id="main-navigation" aria-label="Navegación principal" className={open?'open':''} onClick={()=>setOpen(false)}><Link href="/torneos">Torneos</Link><Link href="/torneos?historial=1">Finalizados</Link>{session&&<Link href="/admin">Mis torneos</Link>}{session&&<Link href="/admin/cuenta">Mi cuenta</Link>}{superadmin&&<Link href="/admin/plataforma">Plataforma</Link>}{session&&<button className="text-link" onClick={()=>void browserDb().auth.signOut({scope:'global'})}>Cerrar sesión</button>}</nav><div className="header-account-actions"><a className="button" onClick={()=>{if(session)startNewDraft(session.user.id);}} href={session?'/admin/torneos/nuevo':'/ingresar?crear=1'}><Plus size={14}/>Crear torneo</a>{!session?<Link className="admin-link" href="/ingresar">Ingresar</Link>:<Link className="admin-link" href="/admin">{admin?'Mis torneos':'Mi panel'}</Link>}</div><button className="menu-button icon-button" aria-label={open?'Cerrar menú':'Abrir menú'} aria-controls="main-navigation" aria-expanded={open} onClick={()=>setOpen(!open)}>{open?<X/>:<Menu/>}</button></div></header>;}
