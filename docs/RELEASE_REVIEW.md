@@ -35,3 +35,11 @@ No borrar torneos, equipos, partidos ni cuentas. No asignar superadministrador d
 ## Reversión
 
 Un fallo SQL antes del commit debe revertirse transaccionalmente. Después del commit, no deshacerlo borrando cuentas, propietarios ni invitaciones. Suspender escrituras, conservar consulta y preparar corrección compatible. No promover el frontend anterior de enlaces como rollback sin comprobar su compatibilidad con permisos retirados. Restaurar backup solo tras ensayo y conciliación de cualquier cambio posterior.
+
+## Respaldo parcial y ensayo completados
+
+Se guardó fuera del repositorio una instantánea consistente de las 20 tablas public/private, definiciones de funciones, columnas, restricciones, políticas, índices y permisos, con referencias de cuentas sin credenciales. SHA-256: `5bd6645d9f19ae928ee4f83c960d6b9dcf7639d81b58e4a68d482e1bc863be76`. Se verificaron estructura y cantidades, y se restauró en PostgreSQL en memoria aislado. La migración de cuentas preservó íntegros todos los documentos de torneo y los conteos deportivos.
+
+Comando: `node scripts/verify-backup-local.mjs /ruta/privada/snapshot.json`. Este script no se conecta a Supabase ni a otra base externa y nunca debe adjuntar el snapshot al repositorio o a artefactos públicos de CI. Los datos reales no se copiaron al proyecto alojado de pruebas.
+
+Alcance limitado: no es pg_dump completo. No incluye contraseñas, sesiones, configuración SMTP ni archivos Storage. Continúa pendiente el respaldo completo de Auth/configuración y la configuración/verificación SMTP de producción. No dar por satisfecha la condición de respaldo completo ni ejecutar publicación automáticamente por haber pasado este ensayo.
