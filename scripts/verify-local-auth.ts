@@ -40,6 +40,10 @@ assert((await guest.client.storage.from('tournament-rules').upload(pdf2,pdfBlob)
 withPdf=await rpc(owner.client,'save',{tournament:{...withPdf,visibility:'private'}});
 assert((await anonymous.storage.from('tournament-rules').download(pdfPath)).error);
 assert.ifError((await owner.client.storage.from('tournament-rules').download(pdfPath)).error);
+const pdfSecret=randomBytes(32).toString('hex');await rpc(owner.client,'invite',{id:announcement.id,label:'PDF invitado',secret:pdfSecret,days:1});await rpc(guest.client,'accept',{secret:pdfSecret});
+assert.ifError((await guest.client.storage.from('tournament-rules').download(pdfPath)).error);
+await rpc(owner.client,'revoke',{id:announcement.id,userId:(await rpc(guest.client,'me')).id});
+assert((await guest.client.storage.from('tournament-rules').download(pdfPath)).error,'Revoked editor cannot read private PDF');
 assert.ifError((await owner.client.storage.from('tournament-rules').upload(pdf2,pdfBlob)).error);
 withPdf=await rpc(owner.client,'save',{tournament:{...withPdf,visibility:'public',settings:{...withPdf.settings,rulesPdf:{path:pdf2,name:'Nuevo reglamento.pdf',size:pdfBlob.size}}}});
 assert((await anonymous.storage.from('tournament-rules').download(pdfPath)).error,'Replaced PDF must no longer be public');

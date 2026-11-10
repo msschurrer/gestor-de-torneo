@@ -17,3 +17,10 @@ test('PDF API rejects anonymous uploads and unsafe download paths before contact
  assert.equal((await POST(new NextRequest('http://localhost/api/tournament-rules',{method:'POST'}))).status,401);
  assert.equal((await GET(new NextRequest('http://localhost/api/tournament-rules?path=..%2Fprivate.pdf'))).status,400);
 });
+
+test('Saved tournament metadata keeps its PDF and rejects attachments from another tournament',async()=>{
+ const {tournamentSchema}=await import('../lib/validation');const {demoTournament}=await import('../lib/demo');
+ const t=demoTournament();const pdf={path:t.id+'/20000000-0000-4000-a000-000000000001.pdf',name:'Reglamento.pdf',size:100};
+ const valid={...t,settings:{...t.settings,rulesPdf:pdf}};assert.deepEqual(tournamentSchema.parse(valid).settings.rulesPdf,pdf);
+ assert.equal(tournamentSchema.safeParse({...valid,settings:{...valid.settings,rulesPdf:{...pdf,path:'10000000-0000-4000-a000-000000000001/20000000-0000-4000-a000-000000000001.pdf'}}}).success,false);
+});
