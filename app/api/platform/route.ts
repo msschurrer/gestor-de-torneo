@@ -16,7 +16,7 @@ export async function POST(req:NextRequest){try{
  if(action==='save'){
   const t=prepareTournamentSave(tournamentSchema.parse(args.tournament));
   if(t.matches.length){const issues=validateFixture(t.matches,t.settings);if(issues.length)throw Error(issues.join(' '));validatePlayoffs(t);const expected=pairings(t.entrants,t.settings),actual=t.matches.filter(m=>m.kind!=='playoff');const key=(m:{round:number;home:string;away:string;kind:string})=>`${m.round}:${m.home}:${m.away}:${m.kind}`;if(actual.length!==expected.length||expected.some(m=>!actual.some(x=>key(x)===key(m))))throw Error('Los enfrentamientos no coinciden con el formato.');}
-  if(t.status!=='draft'&&!t.matches.length)throw Error('Generá el fixture antes de publicar.');args.tournament=t;
+  args.tournament=t;
  }
  const result=await (legacyKey?supabase(token,legacyKey):db).rpc('platform_action',{operation:action,args});if(result.error)throw result.error;
  return NextResponse.json(result.data,{headers:{'Cache-Control':'no-store'}});
