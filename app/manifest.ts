@@ -1,2 +1,2 @@
 import type { MetadataRoute } from 'next';
-export default function manifest():MetadataRoute.Manifest{return{name:'Gestor de Torneos',short_name:'Torneos',description:'El juego, organizado.',start_url:'/',display:'standalone',background_color:'#f6f7f6',theme_color:'#102b24',icons:[{src:'/icon.svg',sizes:'any',type:'image/svg+xml',purpose:'any'}]}}
+export default function manifest():MetadataRoute.Manifest{return{name:'Gestor de Torneo',short_name:'Gestor de Torneo',description:'El juego, organizado.',id:'/',start_url:'/',scope:'/',display:'standalone',background_color:'#102b24',theme_color:'#102b24',icons:[{src:'/trophy-192.png',sizes:'192x192',type:'image/png',purpose:'any'},{src:'/trophy-512.png',sizes:'512x512',type:'image/png',purpose:'any'}]}}
