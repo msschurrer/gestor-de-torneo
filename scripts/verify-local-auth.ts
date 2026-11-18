@@ -3,6 +3,9 @@ import {randomBytes} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {createClient} from '@supabase/supabase-js';
 import {defaultSettings,uid,type Tournament} from '../lib/types';
+import {demoTournament} from '../lib/demo';
+import {removeGeneratedFixture} from '../lib/fixture-reset';
+import {prepareTournamentSave} from '../lib/tournament-sync';
 const values=Object.fromEntries(readFileSync('.env.development.local','utf8').split('\n').filter(Boolean).map(line=>{const i=line.indexOf('=');return[line.slice(0,i),line.slice(i+1)];}));
 const url=values.NEXT_PUBLIC_SUPABASE_URL,key=values.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const host=(value:string)=>['127.0.0.1','localhost','[::1]'].includes(new URL(value).hostname);
@@ -29,6 +32,14 @@ const owner=await signup('creador'),guest=await signup('invitado');console.log('
 const make=(name:string):Tournament=>({id:uid(),slug:name+'-'+Date.now(),name,season:'2026',category:'Prueba local',description:'Solo datos ficticios locales',rules:'',status:'draft',version:0,visibility:'private',demo:true,settings:{...defaultSettings,groups:1},entrants:[],matches:[]});
 const t=await rpc(owner.client,'save',{tournament:make('Torneo local uno')});const other=await rpc(owner.client,'save',{tournament:make('Torneo local dos')});assert((await rpc(owner.client,'mine')).some((x:Tournament)=>x.id===other.id));
 const announcement=await rpc(owner.client,'save',{tournament:{...make('Torneo anunciado'),status:'published',visibility:'public'}});const listing=await anonymous.rpc('list_public_tournaments');assert.ifError(listing.error);assert(listing.data.some((x:Tournament)=>x.id===announcement.id&&x.matches.length===0));console.log('PASS torneo público sin fixture visible para visitantes sin cuenta');
+// Isolated regression: delete fixture, persist, reload and check public projection.
+const generated=demoTournament();const generatedOnly={...announcement,entrants:generated.entrants,settings:generated.settings,matches:generated.matches.map(m=>({...m,status:'scheduled' as const,homeScore:null,awayScore:null,homePenalties:null,awayPenalties:null,winnerId:undefined,events:[],note:''}))};
+const populated=await rpc(owner.client,'save',{tournament:generatedOnly});
+const beforeReset=await anonymous.rpc('list_public_tournaments');assert.ifError(beforeReset.error);assert(beforeReset.data.find((x:Tournament)=>x.id===announcement.id).matches.length>0);
+const reset=await rpc(owner.client,'save',{tournament:prepareTournamentSave(removeGeneratedFixture(populated))});
+const reread=await rpc(owner.client,'read',{id:announcement.id});assert.equal(reread.matches.length,0);assert.deepEqual(reread.settings.roundCalendar,[]);assert.deepEqual(reread.entrants,populated.entrants);
+const afterReset=await anonymous.rpc('list_public_tournaments');assert.ifError(afterReset.error);assert.equal(afterReset.data.find((x:Tournament)=>x.id===announcement.id).matches.length,0);
+Object.assign(announcement,reset);console.log('PASS eliminar fixture conserva equipos, persiste al recargar y actualiza vista pública');
 // Exercise real Storage API and its RLS against local services, never production.
 const pdfPath=announcement.id+'/'+uid()+'.pdf',pdf2=announcement.id+'/'+uid()+'.pdf';
 const pdfBlob=new Blob(['%PDF-1.4\n%%EOF'],{type:'application/pdf'});
