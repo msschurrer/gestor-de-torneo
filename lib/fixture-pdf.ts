@@ -46,8 +46,8 @@ export async function createFixturePdf(t:Tournament):Promise<Uint8Array>{
  // Prefer readable text; use more columns or landscape before reducing its size.
  let chosen:ReturnType<typeof plan>|undefined;
  for(let columns=1;columns<=3&&!chosen;columns++){for(let size=10.5;size>=7.5&&!chosen;size-=.25){for(const [width,height] of [[595.28,841.89],[841.89,595.28]]){const candidate=plan(width,height,columns,size);if(candidate.fits){chosen=candidate;break;}}}}
- if(!chosen){for(let size=7.25;size>=.25;size-=.25){const candidate=plan(841.89,595.28,3,size);if(candidate.fits){chosen=candidate;break;}}}
- if(!chosen)throw Error('El fixture es demasiado extenso para una sola hoja.');
+ if(!chosen){for(let size=7.25;size>=4.5;size-=.25){const candidate=plan(841.89,595.28,3,size);if(candidate.fits){chosen=candidate;break;}}}
+ if(!chosen)throw Error('El fixture es demasiado extenso para una sola hoja legible.');
  const p=chosen,page=doc.addPage([p.width,p.height]),ink=rgb(.08,.17,.15),green=rgb(.09,.23,.18),light=rgb(.94,.96,.94),line=rgb(.83,.87,.84);
  const text=(value:string,x:number,y:number,size:number,f:PDFFont=font,color=ink)=>page.drawText(value,{x,y,size,font:f,color});
  let headerY=p.height-margin-17;for(const row of p.title){text(row,margin,headerY,17,bold);headerY-=20;}headerY-=1;for(const row of p.subtitle){text(row,margin,headerY,8);headerY-=11;}
