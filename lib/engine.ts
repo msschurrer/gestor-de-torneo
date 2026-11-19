@@ -48,8 +48,20 @@ export function schedule(input:Match[],s:Settings):{matches:Match[];warnings:str
  const fixed=(m:Match)=>m.locked||m.status==='finished';
  for(const m of ms.filter(fixed)){if(!s.pitches.includes(m.pitch)||m.slot<0||m.slot>=slots.length)throw Error('Un partido bloqueado no tiene cancha u horario válido.');const key=`${m.pitch}:${m.slot}`;if(occupied.has(key))throw Error('Conflicto entre partidos bloqueados.');occupied.add(key);}
  const pending=ms.filter(m=>!fixed(m)).sort((a,b)=>{const urgency=(m:Match)=>[m.home,m.away].filter(id=>get(id).wasLast).length;return urgency(b)-urgency(a)||hash(a.id+s.seed)-hash(b.id+s.seed);});
+ // Reserve the first turn for one match from each zone when courts allow it.
+ // Keep locked/finished matches intact; they may require an explicit warning.
+ const zones=[...new Set(ms.filter(m=>m.group!==null).map(m=>m.group!))];
+ const openings=new Set<Match>();
+ if(zones.length<=s.pitches.length){for(const group of zones){if(ms.some(m=>m.group===group&&fixed(m)&&m.slot===0))continue;const first=pending.find(m=>m.group===group);if(first)openings.add(first);}}
+ pending.sort((a,b)=>Number(openings.has(b))-Number(openings.has(a)));
+
  for(const m of pending){let best:{pitch:string;slot:number;cost:number}|null=null;
- for(let slot=0;slot<slots.length;slot++)for(let pi=0;pi<s.pitches.length;pi++){const pitch=s.pitches[pi];if(occupied.has(`${pitch}:${slot}`))continue;let cost=0;for(const id of [m.home,m.away]){const h=get(id);cost+=(h.slots[slot]||0)*12+(h.pitches[pitch]||0)*3;if(h.wasLast)cost+=slot>1?150:slot*3;if(h.last===slot)cost+=8;}
+ const openNow=openings.has(m)&&s.pitches.some(p=>!occupied.has(`${p}:0`));
+ for(let slot=0;slot<slots.length;slot++)for(let pi=0;pi<s.pitches.length;pi++){const pitch=s.pitches[pi];if(occupied.has(`${pitch}:${slot}`))continue;
+ if(openNow&&slot!==0)continue;
+ // A movable match must use the first free turn on its court, never leave a gap.
+ if(Array.from({length:slot},(_,earlier)=>occupied.has(`${pitch}:${earlier}`)).some(used=>!used))continue;
+ let cost=0;for(const id of [m.home,m.away]){const h=get(id);cost+=(h.slots[slot]||0)*12+(h.pitches[pitch]||0)*3;if(h.wasLast)cost+=slot>1?150:slot*3;if(h.last===slot)cost+=8;}
  if(s.mode==='rotation'&&m.group!==null&&pi!==(m.group+round-1)%s.pitches.length)cost+=100000;
  cost+=slot*0.1+(hash(m.id+pitch+slot+s.seed)%100)/10000;
  if(!best||cost<best.cost)best={pitch,slot,cost};}
@@ -57,6 +69,7 @@ export function schedule(input:Match[],s:Settings):{matches:Match[];warnings:str
  m.pitch=best.pitch;m.slot=best.slot;m.startsAt=matchStart(s,round,m.slot,matches);occupied.add(`${m.pitch}:${m.slot}`);penalty+=best.cost;
  if(s.mode==='rotation'&&m.group!==null&&s.pitches.indexOf(m.pitch)!==(m.group+round-1)%s.pitches.length)warnings.push(`Fecha ${round}: se requiere una excepción de rotación de cancha.`);
  }
+ if(zones.length<=s.pitches.length)for(const group of zones){if(!ms.some(m=>m.group===group&&m.slot===0))warnings.push(`Fecha ${round}: la zona ${String.fromCharCode(65+group)} no puede comenzar al inicio porque hay partidos bloqueados o finalizados.`);}
  for(const m of ms)for(const id of [m.home,m.away]){const h=get(id);h.slots[m.slot]=(h.slots[m.slot]||0)+1;h.pitches[m.pitch]=(h.pitches[m.pitch]||0)+1;h.last=m.slot;h.wasLast=m.slot===slots.length-1;}
  }
  const errors=validateFixture(matches,s);if(errors.length)throw Error(errors.join(' '));return{matches,warnings,penalty:Math.round(penalty)};
