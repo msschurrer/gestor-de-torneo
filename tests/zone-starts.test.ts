@@ -17,3 +17,16 @@ test('al reequilibrar se conservan los bloqueados y los resultados',()=>{
  const s=settings(),ms=schedule(pairings(teams([6,5]),s),s).matches;const first=ms.find(m=>m.round===2&&m.group===0&&m.slot===0)!;first.status='finished';first.homeScore=1;first.awayScore=0;
  const before=structuredClone(first),next=schedule(ms,s).matches;assert.deepEqual(next.find(m=>m.id===first.id),before);assert.deepEqual(validateFixture(next,s),[]);
 });
+
+test('la rotación de una fase 6+5 evita que un equipo quede siempre en el mismo turno',()=>{
+ const entrants = Array.from({length:11},(_,index)=>({
+  id:'team-'+index,name:'Equipo '+index,group:index<6?0:1,players:[]
+ }));
+ const config = {...settings(),seed:1};
+ const {matches} = schedule(pairings(entrants,config),config);
+ for (const team of entrants) {
+  const slots = matches.filter(match=>match.home===team.id||match.away===team.id).map(match=>match.slot);
+  assert(new Set(slots).size>1,team.name+' debe alternar turnos');
+ }
+ assert.deepEqual(validateFixture(matches,config),[]);
+});
