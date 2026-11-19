@@ -41,6 +41,8 @@ export function matchStart(s:Settings,round:number,slot:number,matches:Match[]):
 }
 // Improve the complete fixture after assigning courts and reserving each zone's start.
 function rotateTeamSlots(matches: Match[], settings: Settings) {
+ const lastSlotByRound = new Map<number,number>();
+ for (const match of matches) lastSlotByRound.set(match.round,Math.max(match.slot,lastSlotByRound.get(match.round) ?? 0));
  const byTeam = new Map<string, Match[]>();
  const pools = new Map<string, Match[]>();
  for (const match of [...matches].sort((a,b)=>a.round-b.round)) {
@@ -58,9 +60,17 @@ function rotateTeamSlots(matches: Match[], settings: Settings) {
   for (const team of teams) {
    const counts = new Map<number,number>();
    let previous = -1;
+   let closingCount = 0;
+   let closedPrevious = false;
    for (const match of byTeam.get(team)!) {
     const count = counts.get(match.slot) || 0;
     total += count * 6 + (match.slot===previous ? 5 : 0);
+    const closing = match.slot > 0 && match.slot === lastSlotByRound.get(match.round);
+    if (closing) {
+     total += closingCount * 16 + (closedPrevious ? 8 : 0);
+     closingCount++;
+    }
+    closedPrevious = closing;
     counts.set(match.slot,count+1);
     previous = match.slot;
    }
