@@ -39,6 +39,57 @@ export function matchStart(s:Settings,round:number,slot:number,matches:Match[]):
  if(s.autoSchedule){const day=s.roundCalendar?.find(d=>d.round===round);if(!day?.date||!day.startTime)return '';const start=new Date(`${day.date}T${day.startTime}:00-03:00`);return new Date(start.getTime()+slot*(s.duration+(s.halftime||0)+s.buffer)*60000).toISOString();}
  const day=new Date(`${s.startDate}T12:00:00Z`);day.setUTCDate(day.getUTCDate()+(round-1)*s.intervalDays);return new Date(`${day.toISOString().slice(0,10)}T${s.slots[slot]}:00-03:00`).toISOString();
 }
+// Improve the complete fixture after assigning courts and reserving each zone's start.
+function rotateTeamSlots(matches: Match[], settings: Settings) {
+ const byTeam = new Map<string, Match[]>();
+ const pools = new Map<string, Match[]>();
+ for (const match of [...matches].sort((a,b)=>a.round-b.round)) {
+  for (const team of [match.home,match.away]) {
+   if (!byTeam.has(team)) byTeam.set(team,[]);
+   byTeam.get(team)!.push(match);
+  }
+  if (match.locked || match.status==='finished') continue;
+  const key = JSON.stringify([match.round,match.pitch,match.group]);
+  if (!pools.has(key)) pools.set(key,[]);
+  pools.get(key)!.push(match);
+ }
+ function cost(teams: string[]) {
+  let total = 0;
+  for (const team of teams) {
+   const counts = new Map<number,number>();
+   let previous = -1;
+   for (const match of byTeam.get(team)!) {
+    const count = counts.get(match.slot) || 0;
+    total += count * 6 + (match.slot===previous ? 5 : 0);
+    counts.set(match.slot,count+1);
+    previous = match.slot;
+   }
+  }
+  return total;
+ }
+ for (let pass=0;pass<12;pass++) {
+  let improved = false;
+  for (const pool of pools.values()) {
+   for (let i=0;i<pool.length;i++) for (let j=i+1;j<pool.length;j++) {
+    const first = pool[i], second = pool[j];
+    const teams = [...new Set([first.home,first.away,second.home,second.away])];
+    const before = cost(teams);
+    const slot = first.slot;
+    first.slot = second.slot;
+    second.slot = slot;
+    if (cost(teams) < before) {
+     first.startsAt = matchStart(settings,first.round,first.slot,matches);
+     second.startsAt = matchStart(settings,second.round,second.slot,matches);
+     improved = true;
+    } else {
+     second.slot = first.slot;
+     first.slot = slot;
+    }
+   }
+  }
+  if (!improved) break;
+ }
+}
 export function schedule(input:Match[],s:Settings):{matches:Match[];warnings:string[];penalty:number}{
  const matches=structuredClone(input),warnings:string[]=[];let penalty=0;
  const history=new Map<string,{slots:number[];pitches:Record<string,number>;last:number;wasLast:boolean}>();
@@ -72,6 +123,7 @@ export function schedule(input:Match[],s:Settings):{matches:Match[];warnings:str
  if(zones.length<=s.pitches.length)for(const group of zones){if(!ms.some(m=>m.group===group&&m.slot===0))warnings.push(`Fecha ${round}: la zona ${String.fromCharCode(65+group)} no puede comenzar al inicio porque hay partidos bloqueados o finalizados.`);}
  for(const m of ms)for(const id of [m.home,m.away]){const h=get(id);h.slots[m.slot]=(h.slots[m.slot]||0)+1;h.pitches[m.pitch]=(h.pitches[m.pitch]||0)+1;h.last=m.slot;h.wasLast=m.slot===slots.length-1;}
  }
+ rotateTeamSlots(matches,s);
  const errors=validateFixture(matches,s);if(errors.length)throw Error(errors.join(' '));return{matches,warnings,penalty:Math.round(penalty)};
 }
 export function validateFixture(matches:Match[],s:Settings){const errors:string[]=[];const seen=new Set<string>();for(const m of matches){if(m.home===m.away)errors.push('Un equipo no puede jugar contra sí mismo.');for(const id of [m.home,m.away]){const k=`${m.round}:${id}`;if(seen.has(k))errors.push(`Equipo programado dos veces en fecha ${m.round}.`);seen.add(k);}
