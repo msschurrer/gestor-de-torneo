@@ -32,7 +32,7 @@ export function withCompletedRounds(tournament: Tournament, sanction: Sanction):
  return {...sanction,servedRounds:[...completed].sort((a,b)=>a-b).slice(0,sanction.games)};
 }
 
-export function disciplinaryTable(tournament: Tournament) {
+export function disciplinaryTable(tournament: Tournament, includePendingMatches = false) {
  const cards = new Map<string,{yellow:number;red:number;secondYellow:number;expulsions:{id:string;round:number;type:'red'|'second_yellow'}[]}>();
  const sanctions = new Map<string,Sanction[]>();
  for (const sanction of tournament.sanctions ?? []) {
@@ -42,7 +42,7 @@ export function disciplinaryTable(tournament: Tournament) {
   sanctions.set(key,rows);
  }
  for (const match of tournament.matches) {
-  if (!match.published || match.status !== 'finished') continue;
+  if (!includePendingMatches && (!match.published || match.status !== 'finished')) continue;
   for (const event of match.events) {
    if (event.voided || event.type==='goal' || event.type==='own_goal') continue;
    const key = event.teamId+':'+event.playerId;

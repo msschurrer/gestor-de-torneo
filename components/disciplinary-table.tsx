@@ -7,7 +7,7 @@ export default function DisciplinaryTable({t,round,onResolve}:{
  t:Tournament;round:number;
  onResolve?:(teamId:string,playerId:string,event?:{id:string;round:number;type:'red'|'second_yellow'})=>void;
 }) {
- const rows = disciplinaryTable(t);
+ const rows = disciplinaryTable(t,Boolean(onResolve));
  return <div className="panel table-scroll">
   <table aria-label="Tarjetas y habilitación de jugadores">
    <thead><tr><th>Jugador</th><th>Equipo</th><th>Amarillas</th><th>Rojas directas</th><th>Doble amarilla</th><th>Estado</th>{onResolve&&<th>Resolución</th>}</tr></thead>

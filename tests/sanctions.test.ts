@@ -46,3 +46,15 @@ test('la multa habilita desde la siguiente fecha o la suspensión se cumple con 
  t.sanctions=[{...s,kind:'fine'}];
  assert.equal(playerEligibility(t,s.teamId,s.playerId,5).eligible,false);
 });
+
+test('administración muestra tarjetas guardadas sin marcador y la vista pública espera el resultado',()=>{
+ const t=demoTournament(),m=t.matches[0],team=t.entrants.find(e=>e.id===m.home)!;
+ const player=team.players[0];
+ t.sanctions=[];
+ t.matches=[{...m,status:'scheduled',published:true,homeScore:null,awayScore:null,events:[
+  {id:uid(),teamId:team.id,playerId:player.id,type:'yellow',minute:15}
+ ]}];
+ assert.deepEqual(disciplinaryTable(t),[]);
+ assert.equal(disciplinaryTable(t,true)[0].yellow,1);
+ assert.equal(t.matches[0].homeScore,null);
+});
