@@ -1,5 +1,5 @@
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib';
-import {disciplinaryTable, returnToPlay, sanctionKinds, sanctionState, withCompletedRounds} from './sanctions';
+import {disciplinaryTable, playerEligibility, returnToPlay, sanctionKinds, sanctionState, withCompletedRounds} from './sanctions';
 import type {Tournament} from './types';
 
 export function sanctionsReport(t: Tournament, round?: number) {
@@ -15,7 +15,7 @@ export function sanctionsReport(t: Tournament, round?: number) {
 }
 
 export async function createSanctionsPdf(t: Tournament, round?: number) {
- const {cards, resolutions} = sanctionsReport(t, round);
+ const {resolutions} = sanctionsReport(t, round);
  const pdf = await PDFDocument.create();
  const regular = await pdf.embedFont(StandardFonts.Helvetica);
  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -51,39 +51,83 @@ export async function createSanctionsPdf(t: Tournament, round?: number) {
   if (y < margin) newPage();
   if (line) draw(line.trimStart(),size,font);
  }
- function section(label: string) {
-  if (y < margin+50) newPage();
-  draw(label,13,bold,green);
-  y -= 5;
+ function table(headers: string[], widths: number[], rows: string[][]) {
+  function header() {
+   page.drawRectangle({x:margin,y:y-24,width:width-margin*2,height:24,color:green});
+   let x = margin;
+   headers.forEach((label,i) => {
+    page.drawText(label,{x:x+5,y:y-15,size:8,font:bold,color:rgb(1,1,1)});
+    x += widths[i];
+   });
+   y -= 24;
+  }
+  if (y < margin+65) newPage();
+  header();
+  if (!rows.length) paragraph('Sin registros para este informe.');
+  rows.forEach((row,index) => {
+   const cells = row.map((value,i) => {
+    const lines: string[] = [];
+    let line = '';
+    for (const char of clean(value)) {
+     if (line && regular.widthOfTextAtSize(line+char,9)>widths[i]-10) {
+      const space = line.lastIndexOf(' ');
+      lines.push(space>0 ? line.slice(0,space) : line);
+      line = ((space>0 ? line.slice(space+1) : '')+char).trimStart();
+     } else line += char;
+    }
+    return [...lines,line];
+   });
+   const lineCount = Math.max(...cells.map(cell=>cell.length));
+   const maxPageLines = Math.floor((height-margin*2-70)/12);
+   for (let offset=0;offset<lineCount;) {
+    const lines = Math.min(maxPageLines,lineCount-offset);
+    const rowHeight = lines*12+10;
+    if (y-rowHeight < margin) {
+     newPage();
+     header();
+    }
+    if (index%2===0) page.drawRectangle({x:margin,y:y-rowHeight,width:width-margin*2,height:rowHeight,color:rgb(.94,.97,.94)});
+    let x = margin;
+    cells.forEach((cell,i) => {
+     cell.slice(offset,offset+lines).forEach((line,j) => {
+      page.drawText(line,{x:x+5,y:y-13-j*12,size:9,font:regular,color:ink});
+     });
+     x += widths[i];
+    });
+    y -= rowHeight;
+    offset += lines;
+   }
+  });
  }
  paragraph(t.name,18,bold);
  draw(title,12,bold,green);
  if (round === undefined) paragraph('Estado de las resoluciones consultado para la fecha '+referenceRound);
  y -= 16;
- section('Tarjetas registradas');
- if (!cards.length) paragraph('Sin tarjetas registradas.');
- for (const row of cards) {
-  if (y < margin+30) newPage();
-  paragraph(row.player+' · '+row.team,10,bold);
-  paragraph(`Amarillas: ${row.yellow} | Rojas directas: ${row.red} | Expulsiones por doble amarilla: ${row.secondYellow}`);
-  y -= 6;
- }
- y -= 14;
- section('Resoluciones disciplinarias');
- if (!resolutions.length) paragraph('Sin resoluciones para este informe.');
- for (const s of resolutions) {
-  if (y < margin+65) newPage();
+
+ const selected = {...t, matches:t.matches.filter(m=>round===undefined||m.round===round), sanctions:resolutions};
+ const rows = disciplinaryTable(selected,true).map(row => {
+  const eligibility = playerEligibility(t,row.teamId,row.playerId,referenceRound);
+  const pending = row.pending.some(event=>
+   !(t.sanctions??[]).some(s=>!s.cancelled&&s.sourceEventId===event.id)
+  );
+  const state = !eligibility.eligible ? eligibility.reasons.join(' · ') : pending ? 'Expulsión por resolver' : 'Habilitado';
+  return [row.player,row.team,String(row.yellow),String(row.red),String(row.secondYellow),state];
+ });
+ table(['Jugador','Equipo','Amarillas','Rojas directas','Doble amarilla','Estado'],[103,100,47,65,65,width-margin*2-380],rows);
+
+ y -= 24;
+ if (y < margin+65) newPage();
+ draw('Resoluciones disciplinarias',13,bold,green);
+ table(['Jugador','Equipo','Sanción y motivo','Estado y regreso'],[103,100,152,width-margin*2-355],resolutions.map(s => {
   const team = t.entrants.find(e=>e.id===s.teamId);
   const player = team?.players.find(p=>p.id===s.playerId);
-  paragraph((player?.name??'Jugador')+' · '+(team?.name??'Equipo'),10,bold);
-  paragraph(`${sanctionKinds[s.kind]} · Desde fecha ${s.startRound}${s.games ? ' · '+s.games+' fecha(s) de suspensión' : ''}`);
-  paragraph(sanctionState(s,referenceRound)+' · '+returnToPlay(s));
-  if (s.kind==='fine'||s.kind==='redeemable') {
-   paragraph(s.paid ? 'Multa pagada después de la fecha '+s.paidAfterRound : 'Multa pendiente de pago');
-  }
-  if (s.reason) paragraph('Motivo: '+s.reason);
-  y -= 8;
- }
+  const payment = s.kind==='fine'||s.kind==='redeemable'
+   ? s.paid ? ' · Multa pagada después de la fecha '+s.paidAfterRound : ' · Multa pendiente de pago'
+   : '';
+  return [player?.name??'Jugador',team?.name??'Equipo',
+   sanctionKinds[s.kind]+' · Desde fecha '+s.startRound+(s.games ? ' · '+s.games+' fecha(s)' : '')+(s.reason ? ' · '+s.reason : ''),
+   sanctionState(s,referenceRound)+' · '+returnToPlay(s)+payment];
+ }));
  pdf.setTitle(clean(t.name)+' - '+title);
  return pdf.save();
 }
