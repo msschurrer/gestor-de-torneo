@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {sanctionState,playerEligibility} from '../lib/sanctions';
+import {sanctionState,playerEligibility,disciplinaryTable} from '../lib/sanctions';
 import {defaultSettings,uid,type Sanction} from '../lib/types';
 import {pairings} from '../lib/engine';
 import {demoTournament} from '../lib/demo';
@@ -15,3 +15,34 @@ test('dos zonas impares permiten activar o desactivar el cruce entre libres',()=
 test('validación conserva sanción y rechaza cumplir una fecha libre o jugador ajeno',()=>{const t=demoTournament(),e=t.entrants[0];t.sanctions=[{...base,teamId:e.id,playerId:e.players[0].id,servedRounds:[]}];assert.equal(tournamentSchema.parse(t).sanctions!.length,1);t.sanctions[0].servedRounds=[999];assert.equal(tournamentSchema.safeParse(t).success,false);t.sanctions[0].servedRounds=[];t.sanctions[0].playerId=uid();assert.equal(tournamentSchema.safeParse(t).success,false);});
 test('resolución fija fecha de regreso sin anular otra sanción vigente',()=>{const s={...base,reinstatedRound:5};assert.match(sanctionState(s,4),/Suspendido/);assert.equal(sanctionState(s,5),'Habilitado por resolución');const t=demoTournament();t.sanctions=[s,{...base,id:uid(),kind:'ban'}];assert.equal(playerEligibility(t,s.teamId,s.playerId,5).eligible,false);});
 test('no se permite habilitar una expulsión del torneo con una fecha de regreso',()=>{const t=demoTournament(),e=t.entrants[0];t.sanctions=[{...base,teamId:e.id,playerId:e.players[0].id,kind:'ban',reinstatedRound:5}];assert.equal(tournamentSchema.safeParse(t).success,false);t.sanctions[0].kind='games';assert.equal(tournamentSchema.safeParse(t).success,true);t.sanctions[0].reinstatedRound=2;assert.equal(tournamentSchema.safeParse(t).success,false);});
+
+test('una expulsión se resuelve una sola vez en la tabla y una doble amarilla se distingue de la roja directa',()=>{
+ const t=demoTournament(),m=t.matches[0],team=t.entrants.find(e=>e.id===m.home)!;
+ const player=team.players[0],eventId=uid();
+ t.matches=[{...m,status:'finished',published:true,events:[
+  {id:uid(),teamId:team.id,playerId:player.id,type:'yellow',minute:15},
+  {id:eventId,teamId:team.id,playerId:player.id,type:'second_yellow',minute:25},
+  {id:uid(),teamId:team.id,playerId:player.id,type:'red',minute:26,voided:true}
+ ]}];
+ t.sanctions=[];
+ const row=disciplinaryTable(t)[0];
+ assert.deepEqual([row.yellow,row.red,row.secondYellow,row.pending[0].id],[2,0,1,eventId]);
+ t.sanctions=[{...base,teamId:team.id,playerId:player.id,sourceEventId:eventId}];
+ assert.equal(disciplinaryTable(t)[0].pending.length,0);
+ assert.equal(tournamentSchema.parse(t).sanctions![0].sourceEventId,eventId);
+});
+
+test('la multa habilita desde la siguiente fecha o la suspensión se cumple con el partido siguiente del equipo',()=>{
+ const t=demoTournament(),m=t.matches[0],team=t.entrants.find(e=>e.id===m.home)!;
+ const s:Sanction={...base,teamId:team.id,playerId:team.players[0].id,kind:'redeemable',games:1,startRound:2};
+ t.sanctions=[s];
+ t.matches=[{...m,round:2,status:'postponed',published:true,events:[]},{...m,round:4,status:'finished',published:true,events:[]}];
+ assert.equal(playerEligibility(t,s.teamId,s.playerId,4).eligible,false);
+ assert.equal(playerEligibility(t,s.teamId,s.playerId,5).eligible,true);
+ assert.deepEqual(s.servedRounds,[]);
+ t.sanctions=[{...s,paid:true,paidAfterRound:2}];
+ assert.equal(playerEligibility(t,s.teamId,s.playerId,2).eligible,false);
+ assert.equal(playerEligibility(t,s.teamId,s.playerId,3).eligible,true);
+ t.sanctions=[{...s,kind:'fine'}];
+ assert.equal(playerEligibility(t,s.teamId,s.playerId,5).eligible,false);
+});
